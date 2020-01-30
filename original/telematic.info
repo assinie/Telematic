@@ -1,0 +1,270 @@
+        GLOBAL {
+            COMMENTS        3;
+            LABELBREAK      1;
+            OUTPUTNAME      "src/telematic.asm";
+            INPUTNAME       "original/telematic.rom";
+            STARTADDR       $E000;
+            PAGELENGTH      0;                  # No paging
+            CPU             "6502";
+        };
+
+############################################################
+# Page 00
+############################################################
+label { addr $0000; size 2; name "RES"; };
+label { addr $0002; size 2; name "RESB"; };
+
+label { addr $0004; size 2; name "DECDEB"; comment "Paramètres pour décalage"; };
+label { addr $0006; size 2; name "DECFIN"; comment "Paramètres pour décalage"; };
+label { addr $0008; size 2; name "DECCIB"; comment "Paramètres pour décalage"; };
+
+label { addr $000c; size 1; name "TR0"; comment "Travail, utilisation par HyperBasic à déterminer"; };
+label { addr $000d; size 1; name "TR1"; comment "Travail, utilisation par HyperBasic à déterminer"; };
+
+label { addr $0011; size 1; name "TR5"; comment "Travail, utilisation par HyperBasic à déterminer"; };
+label { addr $0012; size 1; name "TR6"; comment "Travail, utilisation par HyperBasic à déterminer"; };
+label { addr $0013; size 1; name "TR7"; comment "Travail, utilisation par HyperBasic à déterminer"; };
+label { addr $0014; size 1; name "DEFAFF"; comment "Caractère à afficher par défaut lors de conversion décimale (justification)"; };
+
+label { addr $0026; size 2; name "ADSCR"; comment "Adresse début de la ligne courante écran"; };
+label { addr $0028; size 1; name "SCRNB"; comment "Numéro de la fenêtre courante"; };
+
+label { addr $0032; size 1; name "VDTPAR"; comment "Travail VDT (b7: attribut G0, b6-b4: G0-G1 couleur de fond, b2: G0 soulignage)"; };
+label { addr $0033; size 1; name "VDTASC"; comment "Travail VDT (b7: délimiteur, b6: G1 disjoint/non disjoint, b5-b0: motif G1)"; };
+label { addr $0034; size 1; name "VDTATR"; comment "Travail VDT (b7: , b6: , b5: , b4: , b3: , b2-b0:)"; };
+label { addr $0035; size 1; name "VDTFT"; comment "Travail VDT (b7: SS2, b6: SEP)"; };
+label { addr $0036; size 1; name "VDTTR0"; comment "Travail VDT"; };
+label { addr $0038; size 1; name "VDTX"; comment "Coordonnée écran (G0-G1) colonne"; };
+label { addr $0039; size 1; name "VDTY"; comment "Coordonnée écran (G0-G1) ligne"; };
+label { addr $003a; size 1; name "VDTGX"; comment "Position code graphiqe G1: 0-1 colonne"; };
+label { addr $003b; size 1; name "VDTGY"; comment "Position code graphiqe G1: 0-1 colonne"; };
+label { addr $003c; size 1; name "FLGVD0"; comment "b7: séquence en cours, b6: ESC, b4: US, b3: REP, b1-b0: nb caractères de la séquence"; };
+label { addr $003d; size 1; name "FLGVD1"; comment "b7: curseur on, b6: mode graphique, b1: mode trace/efface graphique, b0:"; };
+
+label { addr $0042; size 2; name "TIMEUS"; comment "Timer 16 bits utilisateur (secondes)"; };
+label { addr $0044; size 2; name "TIMEUD"; comment "Timer 16 bits utilisateur (1/10 secondes)"; };
+
+label { addr $004d; size 2; name "HRS1"; comment "Paramètres pour le travail sur le mode graphique"; };
+
+
+
+label { addr $0060; size 1; name "MEN"; comment "Menu, travail"; };
+label { addr $0061; size 1; name "MENDDX"; comment "Menu: coordonnée du 1er choix (colonne)"; };
+label { addr $0062; size 1; name "MENDDY"; comment "Menu: coordonnée du 1er choix (ligne)"; };
+label { addr $0065; size 1; name "MENLX"; comment "Menu: longueur de la barre de choix"; };
+
+label { addr $0069; size 2; name "ADMEN"; comment "Menu: table des choix"; };
+
+
+label { addr $00d0; size 1; name "VARAPL"; comment "Pointeur pour xxx"; };
+
+
+############################################################
+# Page 01
+############################################################
+
+
+############################################################
+# Page 02
+############################################################
+label { addr $0208; size 4; name "TABDRV"; comment "Activation des lecteurs"; };
+#label { addr $020c; name "DRVDEF"; comment "Numéro (0-3) du lecteur par défaut"; };
+label { addr $020d; name "FLGTEL"; comment "b7:1-> haute résolution, b6:1-> mode minitel, b5:1-> mode degrés (0->radian), b2:1->BONJOUR.COM existe, b1:1->imprimante CENTRONICS détectée, b0:1-> STRATSED absent"; };
+#label { addr $0210; name "TIMED"; comment "Horloge: 1/10 secondes"; };
+label { addr $0211; name "TIMES"; comment "Horloge: secondes"; };
+label { addr $0212; name "TIMEM"; comment "Horloge: minutes"; };
+label { addr $0213; name "TIMEH"; comment "Horloge: heures"; };
+label { addr $0220; size 4; name "SCRX"; comment "Coordonnée X pour chaque fenêtre"; };
+label { addr $0224; size 4; name "SCRY"; comment "Coordonnée Y"; };
+label { addr $0228; size 4; name "SCRDX"; comment "Début de la fenêtre"; };
+label { addr $022c; size 4; name "SCRFX"; comment "Fin de la fenêtre"; };
+label { addr $0230; size 4; name "SCRDY"; comment "Début de la fenêtre"; };
+label { addr $0234; size 4; name "SCRFY"; comment "Fin de la fenêtre"; };
+
+label { addr $027e; name "KBDCTC"; comment "b7:1 Ctrl+C"; };
+
+#label { addr $0286; name "LPRX"; comment "Position dans la ligne"; };
+#label { addr $0287; name "LPRY"; comment "Position dans la page"; };
+label { addr $0288; name "LPRFX"; comment "Largeur d'impression"; };
+#label { addr $028a; name "FLGLPR"; comment "Parametrage imprimante. b7: prete, b6: pas gerer CRLF, b2: RS232/Centronics, b1: echo SCR, b0: pas de CR apres LF"; };
+#label { addr $02aa; name "HRSPAT"; comment "Pattern"; };
+#label { addr $02ab; name "HRSERR"; comment "Indicateur d'erreur dans les paramètres"; };
+#label { addr $02b6; size 4; name "IOTAB2"; comment "Table des IO pour le canal 2"; };
+
+#label { addr $02f0; size 4; name "CSRND"; comment "Nombre aleatoire (RANDOM)"; };
+
+label { addr $02f4; size 3; name "VNMI"; comment "Vecteur NMI (n° de banque, adresse)"; };
+label { addr $02fa; size 3; name "VIRQ"; comment "Vecteur IRQ"; };
+label { addr $02fd; size 3; name "VAPLIC"; comment "N° banque, adresse TELEMATIC->LANGAGE"; };
+
+
+############################################################
+# Page 03
+############################################################
+#label { addr $031c; size 1; name "ACIADR"; comment "ACIA Registre de Données"; };
+#label { addr $031d; size 1; name "ACIASR"; comment "ACIA Registre d'état"; };
+#label { addr $031e; size 1; name "ACIACR"; comment "ACIA Registre de Commande"; };
+#label { addr $031f; size 1; name "ACIACT"; comment "ACIA Registre de Controle"; };
+label { addr $0321; size 1; name "V2DRA"; };
+
+
+############################################################
+# Page 04
+############################################################
+label { addr $040c; name "EXBNK"; };
+label { addr $0414; size 3; name "VEXBNK"; };
+label { addr $0417; name "BNKCID"; };
+label { addr $0418; name "L0418"; comment "Pointeur inter banques"; };
+
+
+############################################################
+# Page 05
+############################################################
+label { addr $0500; name "DRIVE"; comment "N° de lecteur"; };
+label { addr $0512; name "ERRNB"; comment "Erreur Stratsed"; };
+label { addr $0517; size 13; name "BUFNOM"; comment "Nom de fichier (drive+nom+extension)"; };
+#label { addr $0528; name "VASALO0"; comment "Flag lecture/écriture"; };
+#label { addr $052c; name "FTYPE"; comment "Type du fichier"; };
+label { addr $052d; size 2; name "DESALO"; comment "Adresse de début du fichier"; };
+label { addr $052f; size 2; name "FISALO"; comment "Adresse de fin du fichier"; };
+#label { addr $0531; size 2; name "EXSALO"; comment "Adresse d'exécution"; };
+label { addr $0542; size 2; name "TAMPFC"; comment "Adresse de début des tampons fichier (initialisé à DOSBUFFERS par STARTUP)"; };
+label { addr $0544; size 2; name "BITMFC"; comment "(word) BitMap des tampons logiques (même convention que la BitMap disquette, 0->occupé, 1->libre))"; };
+label { addr $0548; name "FICNUM"; comment "Numéro logique du fichier (1 ou 2)"; };
+label { addr $0549; name "NBFIC"; comment "Nombre de fichiers autorisés par FILE"; };
+#label { addr $054c; name "XFIELD"; comment "Pour fichier accès direct: xfield=n° de banque, xfield+1=adresse"; };
+#label { addr $055d; size 3; name "EXTDEF"; comment "Extension par défaut"; };
+label { addr $0590; name "BUFEDT"; comment "Buffer Editeur de Texte"; };
+
+############################################################
+# Page 06
+############################################################
+
+
+############################################################
+# Page 07
+############################################################
+#label { addr $0700; name "SP"; comment "Pointeur de la pile"; };
+#label { addr $0701; name "Stack"; comment "Pile pour xxx"; };
+
+#label { addr $07b7; name "errnb"; comment "Code erreur"; };
+#label { addr $07b8; size 2; name "errnl"; comment "N° de la ligne contenant l'erreur ($ffff si mode direct)"; };
+#label { addr $07ba; size 2; name "errgotonl"; comment "Adresse de la ligne pour le ERRGOTO"; };
+
+
+#label { addr $07EA; size 3; name "telemon_call_routine"; comment "Cette addresse stocke un brk + un id de primitive telemon + rts"; };
+
+#label { addr $07f1; size 1; name "save_S"; comment "Sauvegarde du registre S lors de l'appel à une appli Minitel"; };
+#label { addr $07f9; size 2; name "ptr_07F9"; comment "Pointeur pour xxx"; };
+#label { addr $07fb; size 2; name "HIMEM_val"; comment "Valeur de HIMEM (valeur initiale: $9800)"; };
+
+
+############################################################
+# Page 90
+############################################################
+label { addr $9000; size $0400; name "BVDTAS"; comment "Buffer attributs VDT"; };
+label { addr $9400; size $0400; name "BVDTAT"; comment "Buffer couleur VDT"; };
+label { addr $9C00; size $0080; name "VDTDES"; comment "Travail et conversion G2"; };
+label { addr $9C80; size $0028; name "TABDBH"; comment "Buffer double hauteur VIDEOTEX (taille inconnue)"; };
+label { addr $9CC0; size $0007; name "L9CC0"; comment "Buffer pour..."; };
+
+############################################################
+# Page BB
+############################################################
+# label { addr $BB80; size $0460; name "SCREEN"; comment "Ecran en mode TEXT"; };
+label { addr $BF68; size $0028; name "SCRL25"; comment "Ecran: ligne 25"; };
+
+
+############################################################
+# Cartouche Telematic v2.0b
+############################################################
+range { start $e204; end $e22f; type texttable; name "STARTMENU"; };
+range { start $e230; end $e271; type texttable; name "MENU1"; };
+range { start $e272; end $e283; type texttable; name "LE272"; };
+range { start $e284; end $e29a; type texttable; name "LE284"; };
+range { start $e29b; end $e2aa; type texttable; name "LE29B"; };
+range { start $e2ab; end $e2bc; type texttable; name "LE2AB"; };
+range { start $e2bd; end $e2d0; type texttable; };
+range { start $e2d1; end $e2d9; type texttable; name "LE2D1"; };
+range { start $e2da; end $e2e6; type texttable; name "LE2DA"; };
+range { start $e2e7; end $e2f8; type texttable; };
+range { start $e2f9; end $e30a; type texttable; };
+range { start $e30b; end $e321; type texttable; };
+range { start $e322; end $e33a; type texttable; };
+range { start $e33b; end $e349; type texttable; };
+range { start $e34a; end $e353; type texttable; };
+range { start $e354; end $e35a; type texttable; name "LE354"; };
+range { start $e35b; end $e367; type texttable; name "LE35B"; };
+range { start $e368; end $e36f; type texttable; };
+range { start $e370; end $e37f; type texttable; };
+range { start $e380; end $e398; type texttable; };
+range { start $e399; end $e3a5; type texttable; };
+range { start $e3a6; end $e3b5; type texttable; };
+range { start $e3b6; end $e3b8; type texttable; name "SRV_EXT"; };
+range { start $e3b9; end $e3c0; type texttable; name "SRV_NAME"; };
+
+range { start $e3c1; end $e3c9; type texttable; name "MENU_EDITVDT"; };
+range { start $e3ca; end $e3d6; type texttable; name "MENU_EDITSRV"; };
+range { start $e3d7; end $e3de; type texttable; };
+range { start $e3df; end $e3ec; type texttable; };
+range { start $e3ed; end $e3fc; type texttable; };
+range { start $e3fd; end $e3ff; type texttable; name "VDT_EXT"; };
+range { start $e400; end $e40e; type texttable; name "VDT_NAME"; };
+range { start $e40f; end $e417; type texttable; name "LE40F"; };
+range { start $e418; end $e424; type texttable; name "MENU_EMUL"; };
+range { start $e425; end $e436; type texttable; };
+range { start $e437; end $e446; type texttable; };
+
+
+
+range { start $e447; end $e44a; type bytetable; name "LE447"; };
+range { start $e44b; end $e4a5; type bytetable; name "LE44B"; };
+
+range { start $e62f; end $e644; type texttable; name "LE62F"; };
+range { start $e645; end $e6b1; type texttable; name "LE645"; };
+range { start $e6b2; end $e6c2; type texttable; name "LE6B2"; };
+range { start $e6c3; end $e6d7; type texttable; name "LE6C3"; };
+range { start $e6d8; end $e6db; type texttable; name "LE6D8"; };
+range { start $e6dc; end $e6df; type texttable; name "LE6DC"; };
+range { start $e6e0; end $e70b; type texttable; name "LE6E0"; };
+range { start $e70c; end $e727; type texttable; name "LE70C"; };
+range { start $e728; end $e73b; type texttable; name "LE728"; };
+range { start $e73c; end $e761; type texttable; name "LE73C"; };
+range { start $e762; end $e779; type texttable; name "LE762"; };
+range { start $e77a; end $e77e; type texttable; name "LE77A"; };
+range { start $e77f; end $e78b; type texttable; name "LE77F"; };
+range { start $e78c; end $e792; type texttable; name "LE78C"; };
+range { start $e793; end $e796; type texttable; name "LE793"; };
+range { start $e797; end $e7b7; type texttable; name "LE797"; };
+range { start $e7b8; end $e7c2; type texttable; name "LE7B8"; };
+range { start $e7c3; end $e7cd; type texttable; name "LE7C3"; };
+range { start $e7ce; end $e7d4; type texttable; name "LE7CE"; };
+range { start $e7d5; end $e7e1; type texttable; name "LE7D5"; };
+range { start $e7e2; end $e801; type texttable; name "LE7E2"; };
+range { start $e802; end $e812; type texttable; name "LE802"; };
+range { start $e813; end $e825; type texttable; name "LE813"; };
+range { start $e826; end $e843; type texttable; name "LE826"; };
+range { start $e844; end $e850; type texttable; name "LE844"; };
+range { start $e851; end $e858; type texttable; name "LE851"; };
+range { start $e859; end $e863; type texttable; name "LE859"; };
+
+range { start $e864; end $e86d; type bytetable; };
+
+range { start $e98c; end $e998; type texttable; };
+range { start $ed4d; end $ed55; type bytetable; };
+range { start $ed56; end $ede2; type texttable; name "LED56"; };
+
+range { start $f133; end $f138; type bytetable; };
+
+range { start $f4fc; end $f56a; type texttable; };
+range { start $f6bd; end $f6d4; type texttable; };
+
+range { start $fd3e; end $fd46; type bytetable; };
+
+range { start $ffb5; end $ffb8; type bytetable; };
+range { start $ffc8; end $fff7; type texttable; };
+
+range { start $fff8; end $fff9; type addrtable; name "SIG_vector"; };
+range { start $fffa; end $fffb; type addrtable; name "NMI_vector"; };
+range { start $fffc; end $fffd; type addrtable; name "RST_vector"; };
+range { start $fffe; end $ffff; type addrtable; name "IRQ_vector"; };
