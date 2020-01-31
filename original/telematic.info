@@ -56,7 +56,7 @@ label { addr $0065; size 1; name "MENLX"; comment "Menu: longueur de la barre de
 label { addr $0069; size 2; name "ADMEN"; comment "Menu: table des choix"; };
 
 
-label { addr $00d0; size 1; name "VARAPL"; comment "Pointeur pour xxx"; };
+label { addr $00d0; size 16; name "VARAPL"; comment "Pointeurs pour xxx"; };
 
 
 ############################################################
@@ -80,6 +80,11 @@ label { addr $0228; size 4; name "SCRDX"; comment "Début de la fenêtre"; };
 label { addr $022c; size 4; name "SCRFX"; comment "Fin de la fenêtre"; };
 label { addr $0230; size 4; name "SCRDY"; comment "Début de la fenêtre"; };
 label { addr $0234; size 4; name "SCRFY"; comment "Fin de la fenêtre"; };
+label { addr $0248; size 1; name "FLGSCR"; comment "b7: curseur visible, b6: curseur fixe, b5: video inverse, b4: 38 colonnes, b3: prochain code ESC+xx, b2: sequende US en cours, b1: douvle hauteur, b0: compteur US"; };
+label { addr $024c; size 1; name "CURSCR"; comment "Caractère sous le curseur"; };
+label { addr $0275; size 1; name "FLGKBD"; comment "b7: majuscules, b6: bip clavier, b5: ESC=CTRL+T, b2-b1; langue (00: QWERTY, 01: AZERTY, 10: FRENCH), b0:1 gerer les touches de fonctions"; };
+label { addr $0278; size 1; name "KBDSHT"; comment "b7: CTRL, b6: FUNCT, b5: Joystick Gauche, b3: souris, b0; SHIFT"; };
+label { addr $029d; size 7; name "JCKTAB"; comment "Table des valeurs renvoyées par la souris ou le joystick"; }
 
 label { addr $027e; name "KBDCTC"; comment "b7:1 Ctrl+C"; };
 
@@ -170,13 +175,13 @@ label { addr $4000; size $4000; name "BARBRE"; comment "Buffer arborescence"; };
 label { addr $8000; size $0C00; name "BUFTXT"; comment "Buffer code VIDEOTEX (3ko maxi)"; };
 
 ############################################################
-# Page 90
+# Page 9x
 ############################################################
 label { addr $9000; size $0400; name "BVDTAS"; comment "Buffer attributs VDT"; };
 label { addr $9400; size $0400; name "BVDTAT"; comment "Buffer couleur VDT"; };
 label { addr $9C00; size $0080; name "VDTDES"; comment "Travail et conversion G2"; };
 label { addr $9C80; size $0028; name "TABDBH"; comment "Buffer double hauteur VIDEOTEX (taille inconnue)"; };
-label { addr $9CC0; size $0007; name "L9CC0"; comment "Buffer pour..."; };
+label { addr $9CC0; size $0008; name "PAGE"; comment "Buffer pour le nom de la page actuelle (variable PAGE$ basic)"; };
 
 ############################################################
 # Page BB

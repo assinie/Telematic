@@ -51,8 +51,13 @@ SCRDX           := $0228                        ; Début de la fenêtre
 SCRFX           := $022C                        ; Fin de la fenêtre
 SCRDY           := $0230                        ; Début de la fenêtre
 SCRFY           := $0234                        ; Fin de la fenêtre
+FLGSCR          := $0248                        ; b7: curseur visible, b6: curseur fixe, b5: video inverse, b4: 38 colonnes, b3: prochain code ESC+xx, b2: sequende US en cours, b1: douvle hauteur, b0: compteur US
+CURSCR          := $024C                        ; Caractère sous le curseur
+FLGKBD          := $0275                        ; b7: majuscules, b6: bip clavier, b5: ESC=CTRL+T, b2-b1; langue (00: QWERTY, 01: AZERTY, 10: FRENCH), b0:1 gerer les touches de fonctions
+KBDSHT          := $0278                        ; b7: CTRL, b6: FUNCT, b5: Joystick Gauche, b3: souris, b0; SHIFT
 KBDCTC          := $027E                        ; b7:1 Ctrl+C
 LPRFX           := $0288                        ; Largeur d'impression
+JCKTAB          := $029D                        ; Table des valeurs renvoyées par la souris ou le joystick
 VNMI            := $02F4                        ; Vecteur NMI (n° de banque, adresse)
 VIRQ            := $02FA                        ; Vecteur IRQ
 VAPLIC          := $02FD                        ; N° banque, adresse TELEMATIC->LANGAGE
@@ -77,8 +82,12 @@ BVDTAS          := $9000                        ; Buffer attributs VDT
 BVDTAT          := $9400                        ; Buffer couleur VDT
 VDTDES          := $9C00                        ; Travail et conversion G2
 TABDBH          := $9C80                        ; Buffer double hauteur VIDEOTEX (taille inconnue)
-L9CC0           := $9CC0                        ; Buffer pour...
+PAGE            := $9CC0                        ; Buffer pour le nom de la page actuelle (variable PAGE$ basic)
 SCRL25          := $BF68                        ; Ecran: ligne 25
+
+; ----------------------------------------------------------------------------
+#define XRSSBU $18
+
 ; ----------------------------------------------------------------------------
 LE000:
         ; Vecteur NMI: LE02D banque 7
@@ -95,6 +104,7 @@ LE000:
         _XWSTR0                                 ; E016 00 14
 
 LE018:
+        ; Attend une touche
         _XRDW0                                  ; E018 00 0C
 
         ; 'LANGAGE'?
@@ -436,6 +446,7 @@ LE14D:
 
         ; choix "edition" ou "nouveau serveur"
         jsr     LF98A                           ; E173 20 8A F9
+
         jmp     LE14D                           ; E176 4C 4D E1
 
 ; ----------------------------------------------------------------------------
@@ -523,7 +534,7 @@ LE1C8:
         ldy     #$E3                            ; E1D1 A0 E3
         _XWSTR0                                 ; E1D3 00 14
 
-        ; Attend une toouche
+        ; Attend une touche
         _XRDW0                                  ; E1D5 00 0C
 
         jmp     LE147                           ; E1D7 4C 47 E1
@@ -779,19 +790,24 @@ LE4A9:
         lda     #$00                            ; E4AB A9 00
         sta     BUFNOM                          ; E4AD 8D 17 05
 
+        ; "ACCES DISQUE:"
         lda     #$2F                            ; E4B0 A9 2F
         ldy     #$E6                            ; E4B2 A0 E6
         _XWSTR0                                 ; E4B4 00 14
 
+        ; Affiche le type d'accès ("PAGES VIDEOTEX",...)
         lda     $F6                             ; E4B6 A5 F6
         ldy     $F7                             ; E4B8 A4 F7
         _XWSTR0                                 ; E4BA 00 14
 
+        ; Affiche les différentes options possibles
         lda     #$45                            ; E4BC A9 45
         ldy     #$E6                            ; E4BE A0 E6
         _XWSTR0                                 ; E4C0 00 14
 
+        ; Affiche "Nom courant:"+nom actuel du fichier
         jsr     LE5CD                           ; E4C2 20 CD E5
+
 LE4C5:
         lda     #$1E                            ; E4C5 A9 1E
         _XWR0                                   ; E4C7 00 10
@@ -799,11 +815,14 @@ LE4C5:
         ldx     SCRNB                           ; E4C9 A6 28
         _XCSSCR                                 ; E4CB 00 35
 
+        ; Attend une touche
         _XRDW0                                  ; E4CD 00 0C
+
+        ; CTRL+C? -> LE4D8
         asl     KBDCTC                          ; E4CF 0E 7E 02
         bcs     LE4D8                           ; E4D2 B0 04
 
-        cmp     #$1B                            ; E4D4 C9 1B
+        cmp     #KEY_ESC                        ; E4D4 C9 1B
         bne     LE4DD                           ; E4D6 D0 05
 
 LE4D8:
@@ -813,60 +832,88 @@ LE4D8:
 
 ; ----------------------------------------------------------------------------
 LE4DD:
-        cmp     #$41                            ; E4DD C9 41
+        ; < 'A'? -> LE4F4
+        ; /?\ pourquoi pas directement bcc LE4C5 ???
+        cmp     #'A'                            ; E4DD C9 41
         bcc     LE4F4                           ; E4DF 90 13
 
-        cmp     #$45                            ; E4E1 C9 45
+        ; 'E'crire?
+        cmp     #'E'                            ; E4E1 C9 45
         beq     LE500                           ; E4E3 F0 1B
 
+        ; > E'?
         bcs     LE4F4                           ; E4E5 B0 0D
 
-        sbc     #$40                            ; E4E7 E9 40
+        ; Ici, sélection du lecteur: 'A','B','C,'D'
+        sbc     #'A'-1                          ; E4E7 E9 40
         sta     DRIVE                           ; E4E9 8D 00 05
+
+        ; Exécute une fonction STRATSED si il est présent (affiche une erreur si pas de STRATSED)
+        ; A = XFFBC
         lda     #$BC                            ; E4EC A9 BC
         jsr     LE5E2                           ; E4EE 20 E2 E5
+
         jmp     LE4A9                           ; E4F1 4C A9 E4
 
 ; ----------------------------------------------------------------------------
 LE4F4:
-        cmp     #$4C                            ; E4F4 C9 4C
+        ; 'L'ire?
+        cmp     #'L'                            ; E4F4 C9 4C
         bne     LE508                           ; E4F6 D0 10
 
 LE4F8:
+        ; Exécute une fonction STRATSED si il est présent (affiche une erreur si pas de STRATSED)
+        ; A = XFFC5
         lda     #$C5                            ; E4F8 A9 C5
         jsr     LE5E2                           ; E4FA 20 E2 E5
+
         jmp     LE4A9                           ; E4FD 4C A9 E4
 
 ; ----------------------------------------------------------------------------
 LE500:
+        ; Exécute une fonction STRATSED si il est présent (affiche une erreur si pas de STRATSED)
+        ; A = XFFC2
         lda     #$C2                            ; E500 A9 C2
         jsr     LE5E2                           ; E502 20 E2 E5
+
         jmp     LE4A9                           ; E505 4C A9 E4
 
 ; ----------------------------------------------------------------------------
 LE508:
-        cmp     #$4E                            ; E508 C9 4E
+        ; 'N'ommer?
+        cmp     #'N'                            ; E508 C9 4E
         bne     LE560                           ; E50A D0 54
-        lda     #$20                            ; E50C A9 20
+
+        ; Initialise BUFNOM := '        '
+        lda     #' '                            ; E50C A9 20
         ldx     #$09                            ; E50E A2 09
 LE510:
         sta     BUFNOM,x                        ; E510 9D 17 05
         dex                                     ; E513 CA
         bne     LE510                           ; E514 D0 FA
 
+        ; Affiche "Nom courant:" en ligne 5, colonne 1
         lda     #$B2                            ; E516 A9 B2
         ldy     #$E6                            ; E518 A0 E6
         _XWSTR0                                 ; E51A 00 14
 
         ldx     #$00                            ; E51C A2 00
 LE51E:
+        ; Attend une touche
         _XRDW0                                  ; E51E 00 0C
-        cmp     #$7F                            ; E520 C9 7F
+
+        : [DELETE]?
+        cmp     #KEY_DEL                        ; E520 C9 7F
         bne     LE52F                           ; E522 D0 0B
+
+        ; saisie vide?
         txa                                     ; E524 8A
         beq     LE51E                           ; E525 F0 F7
+
+        ; Décrémente le nombre de caractère de la saisie
         dex                                     ; E527 CA
 
+        ; 'affiche' un BS
         lda     #$08                            ; E528 A9 08
         _XWR0                                   ; E52A 00 10
 
@@ -874,71 +921,113 @@ LE51E:
 
 ; ----------------------------------------------------------------------------
 LE52F:
-        cmp     #$0D                            ; E52F C9 0D
+        cmp     #KEY_RETURN                     ; E52F C9 0D
         beq     LE55D                           ; E531 F0 2A
-        cmp     #$05                            ; E533 C9 05
+
+        ; CTRL+E ('E'crire)?
+        cmp     #KEY_CTRL_E                     ; E533 C9 05
         beq     LE500                           ; E535 F0 C9
-        cmp     #$0C                            ; E537 C9 0C
+
+        ; CTRL+L ('L'ire)?
+        cmp     #KEY_CTRL_L                     ; E537 C9 0C
         beq     LE4F8                           ; E539 F0 BD
-        cmp     #$20                            ; E53B C9 20
+
+        cmp     #' '                            ; E53B C9 20
         beq     LE553                           ; E53D F0 14
+
+        ; Le premier caractère du nom ne peut être un chiffre
         cpx     #$00                            ; E53F E0 00
         beq     LE54B                           ; E541 F0 08
-        cmp     #$30                            ; E543 C9 30
+
+        ; Caractère numérique?
+        cmp     #'0'                            ; E543 C9 30
         bcc     LE51E                           ; E545 90 D7
-        cmp     #$3A                            ; E547 C9 3A
+        cmp     #'9'+1                          ; E547 C9 3A
         bcc     LE553                           ; E549 90 08
+
 LE54B:
-        cmp     #$41                            ; E54B C9 41
+        ; Caractère alpha?
+        cmp     #'A'                            ; E54B C9 41
         bcc     LE51E                           ; E54D 90 CF
-        cmp     #$5B                            ; E54F C9 5B
+        cmp     #'Z'+1                          ; E54F C9 5B
         bcs     LE51E                           ; E551 B0 CB
+
 LE553:
+        ; Affiche le caractère
         _XWR0                                   ; E553 00 10
+
+        ; Ajoute le caractère à BUFNOM
+        ; Sortie si on a saisi 8 caractères
         sta     BUFNOM+1,x                      ; E555 9D 18 05
         inx                                     ; E558 E8
         cpx     #$07                            ; E559 E0 07
         bne     LE51E                           ; E55B D0 C1
+
 LE55D:
         jmp     LE4C5                           ; E55D 4C C5 E4
 
 ; ----------------------------------------------------------------------------
 LE560:
-        cmp     #$49                            ; E560 C9 49
+        ; 'I'nitialiser?
+        cmp     #'I'                            ; E560 C9 49
         bne     LE56F                           ; E562 D0 0B
+
+        ; A = XFFBF
         lda     #$BF                            ; E564 A9 BF
         .byte   $2C                             ; E566 2C
+
 LE567:
+        ; A = XFFB0
         lda     #$B0                            ; E567 A9 B0
+
+        ; Exécute une fonction STRATSED si il est présent (affiche une erreur si pas de STRATSED)
         jsr     LE5E2                           ; E569 20 E2 E5
         jmp     LE4A9                           ; E56C 4C A9 E4
 
 ; ----------------------------------------------------------------------------
 LE56F:
-        cmp     #$55                            ; E56F C9 55
+        ; D'u'pliquer?
+        cmp     #'U'                            ; E56F C9 55
         beq     LE567                           ; E571 F0 F4
-        cmp     #$4D                            ; E573 C9 4D
+
+        ; 'M'enage?
+        cmp     #'M'                            ; E573 C9 4D
         bne     LE585                           ; E575 D0 0E
+
+        ; A = XFFAD
         lda     #$AD                            ; E577 A9 AD
         .byte   $2C                             ; E579 2C
+
 LE57A:
+        ; A = XFFB6
         lda     #$B6                            ; E57A A9 B6
         .byte   $2C                             ; E57C 2C
+
 LE57D:
+        ; A = XFFB3
         lda     #$B3                            ; E57D A9 B3
+
+        ; Exécute une fonction STRATSED si il est présent (affiche une erreur si pas de STRATSED)
         jsr     LE5E2                           ; E57F 20 E2 E5
+
         jmp     LE4A9                           ; E582 4C A9 E4
 
 ; ----------------------------------------------------------------------------
 LE585:
-        cmp     #$54                            ; E585 C9 54
+        ; 'DeT'ruire?
+        cmp     #'T'                            ; E585 C9 54
         beq     LE57A                           ; E587 F0 F1
-        cmp     #$52                            ; E589 C9 52
+
+        ; 'R'ecuperer?
+        cmp     #'R'                            ; E589 C9 52
         beq     LE57D                           ; E58B F0 F0
-        cmp     #$53                            ; E58D C9 53
+
+        ; 'S'electionner?
+        cmp     #'S'                            ; E58D C9 53
         bne     LE5CA                           ; E58F D0 39
+
         lda     #$00                            ; E591 A9 00
-        sta     $0248                           ; E593 8D 48 02
+        sta     FLGSRC                          ; E593 8D 48 02
 
         ldx     #$0B                            ; E596 A2 0B
         lda     #$00                            ; E598 A9 00
@@ -975,17 +1064,21 @@ LE5BD:
         cpy     #$07                            ; E5C3 C0 07
         bne     LE5BD                           ; E5C5 D0 F6
 
+        ; Affiche "Nom courant:"+nom actuel du fichier
         jsr     LE5CD                           ; E5C7 20 CD E5
 
 LE5CA:
         jmp     LE4C5                           ; E5CA 4C C5 E4
 
 ; ----------------------------------------------------------------------------
+; Affiche "Nom courant:"+nom actuel du fichier
 LE5CD:
+        ; Affiche "Nom courant:" en ligne 5, colonne 1
         lda     #$B2                            ; E5CD A9 B2
         ldy     #$E6                            ; E5CF A0 E6
         _XWSTR0                                 ; E5D1 00 14
 
+        ; Affiche le nom actuel du fichier
         ldx     #$F8                            ; E5D3 A2 F8
 LE5D5:
         lda     BUFNOM+1-$F8,x                  ; E5D5 BD 20 04
@@ -1002,6 +1095,14 @@ LE5D5:
         rts                                     ; E5E1 60
 
 ; ----------------------------------------------------------------------------
+; Exécute une fonction STRATSED si il est présent (affiche une erreur si pas de STRATSED)
+;
+; Entrée:
+;    A: Poids faible pour VEXBNK
+;
+; Sortie:
+;    A: ERRNB
+;    X: 1 -> STRATSED absent
 LE5E2:
         pha                                     ; E5E2 48
 
@@ -1016,6 +1117,14 @@ LE5E2:
         ; Masque l'instruction suivante
         .byte   $24                             ; E5EB 24
 
+; Exécute une fonction STRATSED si il est présent (n'affiche pas d'erreur si pas de STRATSED)
+;
+; Entrée:
+;    A: Poids faible pour VEXBNK
+;
+; Sortie:
+;    A: ERRNB
+;    X: 1 -> STRATSED absent
 LE5EC:
         sec                                     ; E5EC 38
 
@@ -1024,7 +1133,7 @@ LE5EC:
 
         sta     VEXBNK+1                        ; E5EE 8D 15 04
 
-        ; Stratsed présent? oui -> LE608
+        ; Stratsed présent? oui -> LE60B
         lda     FLGTEL                          ; E5F1 AD 0D 02
         lsr     a                               ; E5F4 4A
         bcc     LE60B                           ; E5F5 90 14
@@ -1039,6 +1148,7 @@ LE5EC:
         ldy     #$E6                            ; E5FC A0 E6
         _XWSTR0                                 ; E5FE 00 14
 
+        ; Attend l'appui sur une touche
         _XRDW0                                  ; E600 00 0C
 
         ; Efface la ligne suivante
@@ -1051,23 +1161,33 @@ LE608:
         rts                                     ; E60A 60
 
 ; ----------------------------------------------------------------------------
+; Appel d'une fonction STRATSED
+; Entrée:
+;    P:
+;    VEXBNK+1: déjà renseigner avec le poids faible de la fonction
+;
+; Sortie:
+;    A: code erreur STRATSED
 LE60B:
+        ; Appel VEXBNK dans la banque 0
         lda     #$FF                            ; E60B A9 FF
         sta     VEXBNK+2                        ; E60D 8D 16 04
         lda     #$00                            ; E610 A9 00
         sta     BNKCID                          ; E612 8D 17 04
-
+        ; Restaure P ((sauvegardé en LE5ED)
         plp                                     ; E615 28
         jsr     EXBNK                           ; E616 20 0C 04
 
-        lda     #$32                            ; E619 A9 32
-        ldy     #$FF                            ; E61B A0 FF
+        ; Restaure le vecteur d'erreur
+        lda     #<XERVEC                        ; E619 A9 32
+        ldy     #>XERVEC                        ; E61B A0 FF
         sta     VEXBNK+1                        ; E61D 8D 15 04
         sty     VEXBNK+2                        ; E620 8C 16 04
         lda     #$00                            ; E623 A9 00
         sta     BNKCID                          ; E625 8D 17 04
         jsr     EXBNK                           ; E628 20 0C 04
 
+        ; Récupère le code d'erreur STRATSED
         lda     ERRNB                           ; E62B AD 12 05
         rts                                     ; E62E 60
 
@@ -1378,9 +1498,9 @@ LE8D6:
         ldy     #$00                            ; E8D6 A0 00
 LE8D8:
         lda     (RESB),y                        ; E8D8 B1 02
-        sta     L9CC0,y                         ; E8DA 99 C0 9C
+        sta     PAGE,y                          ; E8DA 99 C0 9C
         iny                                     ; E8DD C8
-        cpy     L9CC0                           ; E8DE CC C0 9C
+        cpy     PAGE                            ; E8DE CC C0 9C
         bne     LE8D8                           ; E8E1 D0 F5
 
         lda     $9CCC                           ; E8E3 AD CC 9C
@@ -1515,7 +1635,7 @@ LE963:
         ; Affiche 7 caractères
         ldx     #$01                            ; E96F A2 01
 LE971:
-        lda     L9CC0,x                         ; E971 BD C0 9C
+        lda     PAGE,x                          ; E971 BD C0 9C
         _XWR1                                   ; E974 00 11
 
         inx                                     ; E976 E8
@@ -1554,7 +1674,7 @@ LE99B:
         ; Copie le nom du fichier dans BUFNOM
         ldx     #$07                            ; E9A4 A2 07
 LE9A6:
-        lda     L9CC0,x                         ; E9A6 BD C0 9C
+        lda     PAGE,x                          ; E9A6 BD C0 9C
         sta     BUFNOM,x                        ; E9A9 9D 17 05
         dex                                     ; E9AC CA
         bne     LE9A6                           ; E9AD D0 F7
@@ -1570,7 +1690,9 @@ LE9A6:
 
         lda     #$C5                            ; E9BA A9 C5
 LE9BC:
+        ; Exécute une fonction STRATSED si il est présent (n'affiche pas d'erreur si pas de STRATSED)
         jsr     LE5EC                           ; E9BC 20 EC E5
+
         tax                                     ; E9BF AA
         beq     LE98B                           ; E9C0 F0 C9
 
@@ -1694,7 +1816,7 @@ LEA38:
         pla                                     ; EA3B 68
         sta     L0418                           ; EA3C 8D 18 04
 
-        ldx     #$18                            ; EA3F A2 18
+        ldx     #XRSSBU                         ; EA3F A2 18
         _XTSTBU                                 ; EA41 00 56
         bcc     LEA38                           ; EA43 90 F3
 
@@ -1969,7 +2091,7 @@ LEBA2:
         txa                                     ; EBA6 8A
         beq     LEBB6                           ; EBA7 F0 0D
 
-        lda     $058F,x                         ; EBA9 BD 8F 05
+        lda     BUFEDT-1,x                      ; EBA9 BD 8F 05
         cmp     #$2A                            ; EBAC C9 2A
         bne     LEBB6                           ; EBAE D0 06
 
@@ -2017,8 +2139,8 @@ LEBDD:
 
         ldy     #$08                            ; EBE5 A0 08
 LEBE7:
-        ldx     L9CC0,y                         ; EBE7 BE C0 9C
-        lda     L9CC0+1,y                       ; EBEA B9 C1 9C
+        ldx     PAGE,y                          ; EBE7 BE C0 9C
+        lda     PAGE+1,y                        ; EBEA B9 C1 9C
         jmp     LEAA6                           ; EBED 4C A6 EA
 
 ; ----------------------------------------------------------------------------
@@ -2167,32 +2289,41 @@ LEC5B:
 
 ; ----------------------------------------------------------------------------
 LEC68:
+        ; "deconnexion dans 30 sec"
         ldx     #$00                            ; EC68 A2 00
         jsr     LEBFB                           ; EC6A 20 FB EB
+
         dec     TIMEUS                          ; EC6D C6 42
         jmp     LEC76                           ; EC6F 4C 76 EC
 
 ; ----------------------------------------------------------------------------
 LEC72:
+        ; Timeout := 120 secondes
         ldx     #$78                            ; EC72 A2 78
         stx     TIMEUS                          ; EC74 86 42
 
 LEC76:
         _XRD1                                   ; EC76 00 09
+        ; Caractère reçu?
         bcc     LEC8C                           ; EC78 90 12
 
+        ; Non, on vérifie le timeout
         lda     TIMEUS                          ; EC7A A5 42
         beq     LEC68                           ; EC7C F0 EA
 
         bpl     LEC84                           ; EC7E 10 04
 
+        ; Délai supplémentaire de 30 secondes
+        ; écoulé? oui -> Déconnexion
         cmp     #$E1                            ; EC80 C9 E1
         bcc     LECBC                           ; EC82 90 38
 
 LEC84:
+        ; CTRL+C? non -> boucle
         bit     KBDCTC                          ; EC84 2C 7E 02
         bpl     LEC76                           ; EC87 10 ED
 
+        ; Oui
         jmp     LEA38                           ; EC89 4C 38 EA
 
 ; ----------------------------------------------------------------------------
@@ -2201,11 +2332,20 @@ LEC8C:
         bpl     LECA9                           ; EC8E 10 19
         bvs     LECA9                           ; EC90 70 17
 
+        ; Traitement de la touche de commande
         tax                                     ; EC92 AA
         jsr     LF678                           ; EC93 20 78 F6
+
+        ; Commande trouvée?
         bvc     LECA2                           ; EC96 50 0A
+
+        ; Oui
+
+        ; FUNCT+[ ou FUNCT+]?
         bcs     LEC72                           ; EC98 B0 D8
 
+        ; Oui, A contient SS2 (jeu G2),
+        ; Y contient le caractère
         _XWR1                                   ; EC9A 00 11
 
         tya                                     ; EC9C 98
@@ -2220,18 +2360,26 @@ LECA2:
         jmp     LECB7                           ; ECA6 4C B7 EC
 
 ; ----------------------------------------------------------------------------
+;
+; Entreé:
+;    A: Touche à traiter
 LECA9:
-        cmp     #$20                            ; ECA9 C9 20
+        cmp     #' '                            ; ECA9 C9 20
         bcs     LECBB                           ; ECAB B0 0E
 
+        ; SEP (CTRL+S)?
         cmp     #$13                            ; ECAD C9 13
         bne     LECBB                           ; ECAF D0 0A
 
+        ; Oui, on a reçu une touche de fonction
+        ; il faut prendre le caractère suivant
         jsr     LEC72                           ; ECB1 20 72 EC
+
+        ; Ajoute $5F au code du second caractère
         clc                                     ; ECB4 18
         adc     #$5F                            ; ECB5 69 5F
 LECB7:
-        cmp     #$A8                            ; ECB7 C9 A8
+        cmp     #MNTL_CNXFI                     ; ECB7 C9 A8
         beq     LECBC                           ; ECB9 F0 01
 
 LECBB:
@@ -2240,7 +2388,9 @@ LECBB:
 ; ----------------------------------------------------------------------------
 LECBC:
         jsr     LECC4                           ; ECBC 20 C4 EC
+
         _XDECON                                 ; ECBF 00 65
+
         jmp     LEA0D                           ; ECC1 4C 0D EA
 
 ; ----------------------------------------------------------------------------
@@ -2255,66 +2405,113 @@ LECC4:
 ; ----------------------------------------------------------------------------
 ; Instruction Hyperbasic TINPUT
 TINPUT:
-        ldx     MEN                             ; ECCC A6 60
+        ; Récupère la longueur de la saisie
+        ldx     FACC1E                          ; ECCC A6 60
+
         jsr     LECDC                           ; ECCE 20 DC EC
+
+        ; Code de la touche de sortie dans $FF
+        ; $A0: [ENVOI]
+        ; $A1: [RETOUR]
+        ; $A2: [REPETITION]
+        ; $A3: [GUIDE]
+        ; $A5: [SOMMAIRE]
+        ; $A7: [SUITE]
+        ; $A9: * [RETOUR]
         sta     $FF                             ; ECD1 85 FF
-        ldy     #$90                            ; ECD3 A0 90
-        sty     MENDDX                          ; ECD5 84 61
-        ldy     #$05                            ; ECD7 A0 05
-        sty     MENDDY                          ; ECD9 84 62
+
+        ldy     #<BUFEDT                        ; ECD3 A0 90
+        sty     FACC1M                          ; ECD5 84 61
+        ldy     #>BUFEDT                        ; ECD7 A0 05
+        sty     FACC1M+1                        ; ECD9 84 62
         rts                                     ; ECDB 60
 
 ; ----------------------------------------------------------------------------
+; Saisie d'une chaine
+;
+; Entrée:
+;    X: Longueur de la saisie
+;
+; Sortie:
+;    A: Code de la touche de sortie
+;    X: Longueur réelle de la chaine (sans la justification à droite)
+;    Y: Longueur de la chaine (avec la justification à droite)
+; BUFEDT: Chaine justifiée à droite avec des ' ' au besoin
 LECDC:
         stx     VARAPL                          ; ECDC 86 D0
+
 LECDE:
+        ; Longeur de la chaine reçue
         ldy     #$00                            ; ECDE A0 00
+
 LECE0:
+        ; Sauvegarde Y
         sty     $E5                             ; ECE0 84 E5
+
+        ; Attente d'un caractère
         jsr     LEC72                           ; ECE2 20 72 EC
+
+        ; Restaure Y
         ldy     $E5                             ; ECE5 A4 E5
+
 LECE7:
-        cmp     #$20                            ; ECE7 C9 20
+        cmp     #' '                            ; ECE7 C9 20
         bcc     LED28                           ; ECE9 90 3D
 
-        cmp     #$A0                            ; ECEB C9 A0
+        ; Touche de fonction? oui -> LED01
+        cmp     #MNTL_ENVOI                     ; ECEB C9 A0
         bcs     LED01                           ; ECED B0 12
 
+        ; Longueur maximale atteinte?
+        ; Oui -> boucle en attente d'une touche de fonction
         cpy     VARAPL                          ; ECEF C4 D0
         bcs     LECE0                           ; ECF1 B0 ED
 
+        ; Ajoute le caractère dans BUFEDT
         sta     BUFEDT,y                        ; ECF3 99 90 05
+
+        ; b6 == 1?
         bit     $ED                             ; ECF6 24 ED
         bvs     LECFC                           ; ECF8 70 02
 
+        ; Non, envoyer aussi le caractère vers le canal 1
         _XWR1                                   ; ECFA 00 11
+
 LECFC:
         _XWR0                                   ; ECFC 00 10
         iny                                     ; ECFE C8
         bne     LECE0                           ; ECFF D0 DF
 
+; [CORRECTION]?
 LED01:
-        cmp     #$A6                            ; ED01 C9 A6
+        cmp     #MNTL_CORRECTION                ; ED01 C9 A6
         bne     LED19                           ; ED03 D0 14
 
+        ; Chaine vide?
         tya                                     ; ED05 98
         beq     LED11                           ; ED06 F0 09
 
+        ; Non, correction et boucle
         jsr     LE87C                           ; ED08 20 7C E8
         dey                                     ; ED0B 88
         bpl     LECE0                           ; ED0C 10 D2
 
 LED0E:
         ldx     #$02                            ; ED0E A2 02
+
+        ; Masque l'instruction suivante
         .byte   $2C                             ; ED10 2C
+
 LED11:
         ldx     #$01                            ; ED11 A2 01
+
         jsr     LEBFB                           ; ED13 20 FB EB
         jmp     LECDE                           ; ED16 4C DE EC
 
 ; ----------------------------------------------------------------------------
+; [ANNULATION]?
 LED19:
-        cmp     #$A4                            ; ED19 C9 A4
+        cmp     #MNTL_ANNULATION                ; ED19 C9 A4
         bne     LED28                           ; ED1B D0 0B
 
         tya                                     ; ED1D 98
@@ -2326,22 +2523,31 @@ LED20:
         bne     LED20                           ; ED24 D0 FA
         beq     LECE0                           ; ED26 F0 B8
 
+; ----------------------------------------------------------------------------
 LED28:
+        ; Sauvegarde la touche de sortie
         pha                                     ; ED28 48
+
+        ; Place la longueur de la chaine reçue dans X
         tya                                     ; ED29 98
         tax                                     ; ED2A AA
-        lda     #$20                            ; ED2B A9 20
+
+        ; Complète la chaine avec des ' '
+        lda     #' '                            ; ED2B A9 20
 LED2D:
+        ; Nombre de caractère saisis >= nombre attendu?
         cpy     VARAPL                          ; ED2D C4 D0
         bcs     LED37                           ; ED2F B0 06
-
         sta     BUFEDT,y                        ; ED31 99 90 05
         iny                                     ; ED34 C8
         bne     LED2D                           ; ED35 D0 F6
 
 LED37:
+        ; Marque la fin du buffer
         lda     #$00                            ; ED37 A9 00
         sta     BUFEDT,y                        ; ED39 99 90 05
+
+        ; Restaure la touche de sortie et fin
         pla                                     ; ED3C 68
         rts                                     ; ED3D 60
 
@@ -2576,12 +2782,15 @@ LEED9:
         txa                                     ; EED9 8A
         beq     LEF16                           ; EEDA F0 3A
 
+        ; "validation (O/N):"
         lda     #$56                            ; EEDC A9 56
         ldy     #$ED                            ; EEDE A0 ED
         _XWSTR0                                 ; EEE0 00 14
 
+        ; Attend l'appui sur une touche
         _XRDW0                                  ; EEE2 00 0C
-        cmp     #$4F                            ; EEE4 C9 4F
+
+        cmp     #'O'                            ; EEE4 C9 4F
         bne     LEF0C                           ; EEE6 D0 24
 
 LEEE8:
@@ -2620,8 +2829,10 @@ LEF0D:
 ; ----------------------------------------------------------------------------
 LEF16:
         jsr     LEF0D                           ; EF16 20 0D EF
+
         ldx     #$00                            ; EF19 A2 00
         stx     $ED                             ; EF1B 86 ED
+
         _XCOSCR                                 ; EF1D 00 34
         bit     FLGTEL                          ; EF1F 2C 0D 02
         bvc     LEF28                           ; EF22 50 04
@@ -2659,17 +2870,22 @@ LEF44:
         .byte   $2C                             ; EF50 2C
 
 LEF51:
+        ; Attend l'appui sur une touche
         _XRDW0                                  ; EF51 00 0C
+
+        ; CTRL+C?
         asl     KBDCTC                          ; EF53 0E 7E 02
         bcc     LEF74                           ; EF56 90 1C
 
+        ; Oui
 LEF58:
         jsr     LF2EC                           ; EF58 20 EC F2
-        asl     $0275                           ; EF5B 0E 75 02
+        asl     FLGKBD                          ; EF5B 0E 75 02
         sec                                     ; EF5E 38
-        ror     $0275                           ; EF5F 6E 75 02
+        ror     FLGKBD                          ; EF5F 6E 75 02
+
         lda     #$03                            ; EF62 A9 03
-        sta     $02A3                           ; EF64 8D A3 02
+        sta     JCKTAB+6                        ; EF64 8D A3 02
 
         lda     #XMDS                           ; EF67 A9 8F
         _XCL2                                   ; EF69 00 06
@@ -2685,23 +2901,25 @@ LEF6B:
 ; ----------------------------------------------------------------------------
 LEF74:
         tax                                     ; EF74 AA
+
         lda     VDTX                            ; EF75 A5 38
         ldy     VDTY                            ; EF77 A4 39
-        cpx     #$84                            ; EF79 E0 84
+
+        cpx     #KEY_FUNCT_D                    ; EF79 E0 84
         beq     LEFA4                           ; EF7B F0 27
 
-        cpx     #$86                            ; EF7D E0 86
+        cpx     #KEY_FUNCT_F                    ; EF7D E0 86
         beq     LEFAC                           ; EF7F F0 2B
 
-        cpx     #$8F                            ; EF81 E0 8F
+        cpx     #KEY_FUNCT_O                    ; EF81 E0 8F
         beq     LEF9C                           ; EF83 F0 17
 
         lda     #$80                            ; EF85 A9 80
-        cpx     #$85                            ; EF87 E0 85
+        cpx     #KEY_FUNCT_E                    ; EF87 E0 85
         beq     LEF90                           ; EF89 F0 05
 
         lsr     a                               ; EF8B 4A
-        cpx     #$90                            ; EF8C E0 90
+        cpx     #KEY_FUNCT_P                    ; EF8C E0 90
         bne     LEFB4                           ; EF8E D0 24
 
 LEF90:
@@ -2728,28 +2946,29 @@ LEFAC:
         beq     LEF96                           ; EFB2 F0 E2
 
 LEFB4:
-        cpx     #$9A                            ; EFB4 E0 9A
+        cpx     #KEY_FUNCT_Z                    ; EFB4 E0 9A
         bne     LEFC3                           ; EFB6 D0 0B
 
         ldx     VDTX                            ; EFB8 A6 38
         stx     VARAPL                          ; EFBA 86 D0
         lda     VDTY                            ; EFBC A5 39
-        sta     $D2                             ; EFBE 85 D2
+        sta     VARAPL+2                        ; EFBE 85 D2
         jmp     LEF38                           ; EFC0 4C 38 EF
 
 ; ----------------------------------------------------------------------------
 LEFC3:
-        cpx     #$98                            ; EFC3 E0 98
+        cpx     #KEY_FUNCT_X              ; EFC3 E0 98
         bne     LEFD2                           ; EFC5 D0 0B
+
         ldx     VDTX                            ; EFC7 A6 38
-        stx     $D1                             ; EFC9 86 D1
+        stx     VARAPL+1                        ; EFC9 86 D1
         lda     VDTY                            ; EFCB A5 39
-        sta     $D3                             ; EFCD 85 D3
+        sta     VARAPL+3                        ; EFCD 85 D3
         jmp     LEF38                           ; EFCF 4C 38 EF
 
 ; ----------------------------------------------------------------------------
 LEFD2:
-        cpx     #$83                            ; EFD2 E0 83
+        cpx     #KEY_FUNCT_C                    ; EFD2 E0 83
         bne     LF02B                           ; EFD4 D0 55
 
         ldx     #$06                            ; EFD6 A2 06
@@ -2768,7 +2987,7 @@ LEFD8:
         sta     BUFTXT+4                        ; EFED 8D 04 80
         sty     BUFTXT+5                        ; EFF0 8C 05 80
         jsr     LF2EC                           ; EFF3 20 EC F2
-        ldy     $D2                             ; EFF6 A4 D2
+        ldy     VARAPL+2                        ; EFF6 A4 D2
 LEFF8:
         ldx     VARAPL                          ; EFF8 A6 D0
         inx                                     ; EFFA E8
@@ -2783,13 +3002,13 @@ LF007:
         _XWR2                                   ; F009 00 12
 
         inx                                     ; F00B E8
-        cpx     $D1                             ; F00C E4 D1
+        cpx     VARAPL+1                        ; F00C E4 D1
         bcc     LF007                           ; F00E 90 F7
 
         beq     LF007                           ; F010 F0 F5
 
         iny                                     ; F012 C8
-        cpy     $D3                             ; F013 C4 D3
+        cpy     VARAPL+3                        ; F013 C4 D3
         beq     LEFF8                           ; F015 F0 E1
 
         bcc     LEFF8                           ; F017 90 DF
@@ -2809,7 +3028,7 @@ LF01F:
 
 ; ----------------------------------------------------------------------------
 LF02B:
-        cpx     #$96                            ; F02B E0 96
+        cpx     #KEY_FUNCT_V                    ; F02B E0 96
         bne     LF035                           ; F02D D0 06
 
         jsr     LF1EB                           ; F02F 20 EB F1
@@ -2818,11 +3037,19 @@ LF032:
 
 ; ----------------------------------------------------------------------------
 LF035:
+        ; Traitement de la touche de commande (dans X)
         jsr     LF678                           ; F035 20 78 F6
+
+        ; Commande trouvée?
         bvc     LF044                           ; F038 50 0A
 
+        ; Oui
+
+        ; FUNCT+[ ou FUNCT+]?
         bcs     LF032                           ; F03A B0 F6
 
+        ; Oui, A contient SS2 (jeu G2),
+        ; Y contient le caractère
         _XWR2                                   ; F03C 00 12
 
         tya                                     ; F03E 98
@@ -2859,7 +3086,7 @@ LF052:
         ldx     #$00                            ; F066 A2 00
 
 LF068:
-        stx     $02A3                           ; F068 8E A3 02
+        stx     JCKTAB+6                        ; F068 8E A3 02
         _XWR2                                   ; F06B 00 12
 
         lda     #$00                            ; F06D A9 00
@@ -3178,9 +3405,9 @@ LF1EB:
         sec                                     ; F1FD 38
         lda     VDTY                            ; F1FE A5 39
         tax                                     ; F200 AA
-        sbc     $D2                             ; F201 E5 D2
+        sbc     VARAPL+2                        ; F201 E5 D2
         sta     TR1                             ; F203 85 0D
-        stx     $D2                             ; F205 86 D2
+        stx     VARAPL+2                        ; F205 86 D2
 LF207:
         ldy     #$00                            ; F207 A0 00
         lda     (RES),y                         ; F209 B1 00
@@ -3870,15 +4097,24 @@ LF5C9:
 
 ; ----------------------------------------------------------------------------
 LF5D2:
+        ; Traitement de la touche de commande (dans X)
         tax                                     ; F5D2 AA
         jsr     LF678                           ; F5D3 20 78 F6
+
+        ; Commande trouvée?
         bvc     LF5E4                           ; F5D6 50 0C
 
+        ; Oui
+
+        ; FUNCT+[ ou FUNCT+]?
         bcs     LF5B1                           ; F5D8 B0 D7
 
+        ; Oui, A contient SS2 (jeu G2),
+        ; Y contient le caractère
         jsr     LF66B                           ; F5DA 20 6B F6
         tya                                     ; F5DD 98
         jsr     LF66B                           ; F5DE 20 6B F6
+
         jmp     LF5B1                           ; F5E1 4C B1 F5
 
 ; ----------------------------------------------------------------------------
@@ -4005,8 +4241,9 @@ LF677:
         rts                                     ; F677 60
 
 ; ----------------------------------------------------------------------------
+; Bascule NB/couleur sur le moniteur?
 LF678:
-        cpx     #$0C                            ; F678 E0 0C
+        cpx     #KEY_CTRL_L                     ; F678 E0 0C
         bne     LF687                           ; F67A D0 0B
 
         lda     FLGVD1                          ; F67C A5 3D
@@ -4014,52 +4251,70 @@ LF678:
         sta     FLGVD1                          ; F680 85 3D
 LF682:
         sec                                     ; F682 38
+
+        ; Force V=1
         bit     LF686                           ; F683 2C 86 F6
 
 LF686:
         rts                                     ; F686 60
 
 ; ----------------------------------------------------------------------------
+; Impression ASCII de la page? (caractère alpha-numériques)
 LF687:
-        cpx     #$81                            ; F687 E0 81
+        cpx     #KEY_FUNCT_A                     ; F687 E0 81
         bne     LF690                           ; F689 D0 05
 
         _XHCVDT                                 ; F68B 00 4B
         jmp     LF682                           ; F68D 4C 82 F6
 
 ; ----------------------------------------------------------------------------
+; Impression VIDEOTEX de la page? (hard copy)
 LF690:
-        cpx     #$89                            ; F690 E0 89
+        cpx     #KEY_FUNCT_I                    ; F690 E0 89
         bne     LF699                           ; F692 D0 05
 
         _XHCHRS                                 ; F694 00 4C
         jmp     LF682                           ; F696 4C 82 F6
 
 ; ----------------------------------------------------------------------------
+; Accent aigü?
 LF699:
-        lda     $0278                           ; F699 AD 78 02
-        cpx     #$9B                            ; F69C E0 9B
+        lda     KBDSHT                          ; F699 AD 78 02
+        cpx     #KEY_FUNCT_LBRACKET             ; F69C E0 9B
         bne     LF6A9                           ; F69E D0 09
 
-        ldy     #$42                            ; F6A0 A0 42
+        ldy     #'B'                            ; F6A0 A0 42
+
+        ; KEY_SHIFT?
         lsr     a                               ; F6A2 4A
         bcc     LF6B4                           ; F6A3 90 0F
 
-        ldy     #$43                            ; F6A5 A0 43
+        ; KEY_FUNCT_LCURLY -> circonflexe
+        ldy     #'C'                            ; F6A5 A0 43
         bcs     LF6B4                           ; F6A7 B0 0B
 
+; ----------------------------------------------------------------------------
+; Accent grave?
 LF6A9:
-        ldy     #$41                            ; F6A9 A0 41
-        cpx     #$9D                            ; F6AB E0 9D
+        ldy     #'A'                            ; F6A9 A0 41
+        cpx     #KEY_FUNCT_RBRACKET             ; F6AB E0 9D
         bne     LF6BB                           ; F6AD D0 0C
 
+        ; KEY_SHIFT?
         lsr     a                               ; F6AF 4A
         bcc     LF6B4                           ; F6B0 90 02
 
-        ldy     #$48                            ; F6B2 A0 48
+        ; KEY_FUNCT_RCURLY -> Tréma
+        ldy     #'H'                            ; F6B2 A0 48
+
 LF6B4:
+        ; Indique qu'on a une combinaison avec un accent
         clc                                     ; F6B4 18
+
+        ; SS2 (Jeu G2)
         lda     #$19                            ; F6B5 A9 19
+
+        ; Force V=1
         bit     LF6BA                           ; F6B7 2C BA F6
 LF6BA:
         rts                                     ; F6BA 60
@@ -4079,13 +4334,13 @@ LF6C4:
         .byte   $00                             ; F6D4 00
 ; ----------------------------------------------------------------------------
 LF6D5:
-        stx     $D2                             ; F6D5 86 D2
-        sta     $D3                             ; F6D7 85 D3
+        stx     VARAPL+2                        ; F6D5 86 D2
+        sta     VARAPL+3                        ; F6D7 85 D3
         jsr     LE8AB                           ; F6D9 20 AB E8
         lda     RESB                            ; F6DC A5 02
         ldy     RESB+1                          ; F6DE A4 03
         sta     VARAPL                          ; F6E0 85 D0
-        sty     $D1                             ; F6E2 84 D1
+        sty     VARAPL+1                        ; F6E2 84 D1
         lda     $9CCC                           ; F6E4 AD CC 9C
         and     #$20                            ; F6E7 29 20
         bne     LF712                           ; F6E9 D0 27
@@ -4125,12 +4380,12 @@ LF713:
 LF720:
         lda     (RESB),y                        ; F720 B1 02
         iny                                     ; F722 C8
-        cmp     $D2                             ; F723 C5 D2
+        cmp     VARAPL+2                        ; F723 C5 D2
         bne     LF730                           ; F725 D0 09
 
         lda     (RESB),y                        ; F727 B1 02
         iny                                     ; F729 C8
-        cmp     $D3                             ; F72A C5 D3
+        cmp     VARAPL+3                        ; F72A C5 D3
         beq     LF733                           ; F72C F0 05
 
         bne     LF720                           ; F72E D0 F0
@@ -4142,7 +4397,7 @@ LF730:
 LF733:
         dey                                     ; F733 88
         dey                                     ; F734 88
-        sty     $D4                             ; F735 84 D4
+        sty     VARAPL+4                        ; F735 84 D4
         ldy     #$0C                            ; F737 A0 0C
         lda     (VARAPL),y                      ; F739 B1 D0
         asl     a                               ; F73B 0A
@@ -4150,12 +4405,12 @@ LF733:
 
         ldy     #$08                            ; F73E A0 08
         lda     (VARAPL),y                      ; F740 B1 D0
-        ldy     $D4                             ; F742 A4 D4
+        ldy     VARAPL+4                        ; F742 A4 D4
         sta     (RESB),y                        ; F744 91 02
         tax                                     ; F746 AA
         ldy     #$09                            ; F747 A0 09
         lda     (VARAPL),y                      ; F749 B1 D0
-        ldy     $D4                             ; F74B A4 D4
+        ldy     VARAPL+4                        ; F74B A4 D4
         iny                                     ; F74D C8
         sta     (RESB),y                        ; F74E 91 02
         jsr     LE8AB                           ; F750 20 AB E8
@@ -4173,7 +4428,7 @@ LF756:
         sbc     #$02                            ; F763 E9 02
         sta     (RESB),y                        ; F765 91 02
         clc                                     ; F767 18
-        lda     $D4                             ; F768 A5 D4
+        lda     VARAPL+4                        ; F768 A5 D4
         adc     RESB                            ; F76A 65 02
         sta     DECCIB                          ; F76C 85 08
         tay                                     ; F76E A8
@@ -4195,19 +4450,19 @@ LF77D:
         sta     DECFIN                          ; F785 85 06
         sty     DECFIN+1                        ; F787 84 07
         _XDECAL                                 ; F789 00 18
-        ldx     $D2                             ; F78B A6 D2
-        lda     $D3                             ; F78D A5 D3
+        ldx     VARAPL+2                        ; F78B A6 D2
+        lda     VARAPL+3                        ; F78D A5 D3
         jsr     LE8AB                           ; F78F 20 AB E8
         lda     RESB                            ; F792 A5 02
         ldy     RESB+1                          ; F794 A4 03
         sta     VARAPL                          ; F796 85 D0
-        sty     $D1                             ; F798 84 D1
+        sty     VARAPL+1                        ; F798 84 D1
         jmp     LF7C1                           ; F79A 4C C1 F7
 
 ; ----------------------------------------------------------------------------
 LF79D:
-        ldx     $D2                             ; F79D A6 D2
-        lda     $D3                             ; F79F A5 D3
+        ldx     VARAPL+2                        ; F79D A6 D2
+        lda     VARAPL+3                        ; F79F A5 D3
         jsr     LE8AB                           ; F7A1 20 AB E8
         bit     $9CCC                           ; F7A4 2C CC 9C
         bvc     LF7ED                           ; F7A7 50 44
@@ -4229,7 +4484,7 @@ LF7C1:
         clc                                     ; F7C5 18
         adc     VARAPL                          ; F7C6 65 D0
         sta     DECDEB                          ; F7C8 85 04
-        lda     $D1                             ; F7CA A5 D1
+        lda     VARAPL+1                        ; F7CA A5 D1
         adc     #$00                            ; F7CC 69 00
         sta     DECDEB+1                        ; F7CE 85 05
         lda     #$00                            ; F7D0 A9 00
@@ -4237,7 +4492,7 @@ LF7C1:
         sta     DECFIN                          ; F7D4 85 06
         sty     DECFIN+1                        ; F7D6 84 07
         ldx     VARAPL                          ; F7D8 A6 D0
-        ldy     $D1                             ; F7DA A4 D1
+        ldy     VARAPL+1                        ; F7DA A4 D1
         inx                                     ; F7DC E8
         bne     LF7E0                           ; F7DD D0 01
 
@@ -4256,13 +4511,13 @@ LF7EC:
 LF7ED:
         ldx     $9CCA                           ; F7ED AE CA 9C
         lda     $9CCB                           ; F7F0 AD CB 9C
-        stx     $D4                             ; F7F3 86 D4
-        sta     $D5                             ; F7F5 85 D5
+        stx     VARAPL+4                        ; F7F3 86 D4
+        sta     VARAPL+5                        ; F7F5 85 D5
         jsr     LE8AB                           ; F7F7 20 AB E8
         lda     RESB                            ; F7FA A5 02
         ldy     RESB+1                          ; F7FC A4 03
-        sta     $D2                             ; F7FE 85 D2
-        sty     $D3                             ; F800 84 D3
+        sta     VARAPL+2                        ; F7FE 85 D2
+        sty     VARAPL+3                        ; F800 84 D3
         ldy     #$08                            ; F802 A0 08
         lda     (VARAPL),y                      ; F804 B1 D0
         tax                                     ; F806 AA
@@ -4271,10 +4526,10 @@ LF7ED:
         jsr     LE8AB                           ; F80A 20 AB E8
         ldy     #$08                            ; F80D A0 08
         lda     (VARAPL),y                      ; F80F B1 D0
-        sta     ($D2),y                         ; F811 91 D2
+        sta     (VARAPL+2),y                    ; F811 91 D2
         iny                                     ; F813 C8
         lda     (VARAPL),y                      ; F814 B1 D0
-        sta     ($D2),y                         ; F816 91 D2
+        sta     (VARAPL+2),y                    ; F816 91 D2
 LF818:
         ldy     #$0A                            ; F818 A0 0A
         lda     (VARAPL),y                      ; F81A B1 D0
@@ -4318,21 +4573,21 @@ LF83F:
 
         ldy     #$08                            ; F84A A0 08
         lda     (RESB),y                        ; F84C B1 02
-        sta     $D4                             ; F84E 85 D4
+        sta     VARAPL+4                        ; F84E 85 D4
         sta     (VARAPL),y                      ; F850 91 D0
         iny                                     ; F852 C8
         lda     (RESB),y                        ; F853 B1 02
-        sta     $D5                             ; F855 85 D5
+        sta     VARAPL+5                        ; F855 85 D5
         sta     (VARAPL),y                      ; F857 91 D0
         jsr     LF876                           ; F859 20 76 F8
-        ldx     $D4                             ; F85C A6 D4
-        lda     $D5                             ; F85E A5 D5
+        ldx     VARAPL+4                        ; F85C A6 D4
+        lda     VARAPL+5                        ; F85E A5 D5
         jsr     LE8AB                           ; F860 20 AB E8
         ldy     #$0A                            ; F863 A0 0A
-        lda     $D2                             ; F865 A5 D2
+        lda     VARAPL+2                        ; F865 A5 D2
         sta     (RESB),y                        ; F867 91 02
         iny                                     ; F869 C8
-        lda     $D3                             ; F86A A5 D3
+        lda     VARAPL+3                        ; F86A A5 D3
         sta     (RESB),y                        ; F86C 91 02
         ldy     #$0C                            ; F86E A0 0C
         lda     (VARAPL),y                      ; F870 B1 D0
@@ -4342,10 +4597,10 @@ LF83F:
 
 LF876:
         ldy     #$08                            ; F876 A0 08
-        lda     $D2                             ; F878 A5 D2
+        lda     VARAPL+2                        ; F878 A5 D2
         sta     (RESB),y                        ; F87A 91 02
         iny                                     ; F87C C8
-        lda     $D3                             ; F87D A5 D3
+        lda     VARAPL+3                        ; F87D A5 D3
         sta     (RESB),y                        ; F87F 91 02
 LF881:
         ldy     #$0A                            ; F881 A0 0A
@@ -4383,7 +4638,7 @@ LF8A1:
 LF8AA:
         clc                                     ; F8AA 18
         lda     VARAPL                          ; F8AB A5 D0
-        ldy     $D1                             ; F8AD A4 D1
+        ldy     VARAPL+1                        ; F8AD A4 D1
         sta     RESB                            ; F8AF 85 02
         sty     RESB+1                          ; F8B1 84 03
 LF8B3:
@@ -4447,10 +4702,10 @@ LF8E8:
 ; ----------------------------------------------------------------------------
 LF90A:
         dey                                     ; F90A 88
-        lda     $D3                             ; F90B A5 D3
+        lda     VARAPL+3                        ; F90B A5 D3
         sta     (RESB),y                        ; F90D 91 02
         dey                                     ; F90F 88
-        lda     $D2                             ; F910 A5 D2
+        lda     VARAPL+2                        ; F910 A5 D2
         sta     (RESB),y                        ; F912 91 02
         lda     #$80                            ; F914 A9 80
         pla                                     ; F916 68
@@ -4460,86 +4715,146 @@ LF90A:
         jmp     LF881                           ; F91D 4C 81 F8
 
 ; ----------------------------------------------------------------------------
+; Calcule l'adresse de fin de l'arborescence et le nombre de pages
+; et créé une nouvelle page vide
+;
+; Entrée:
+;    A: caractère à placer après le n° de la page
+;
+; Sortie:
+;    VARAPL: Adresse de début de la nouvelle page (2 octets)
+;    VARAPL+2: nombre de pages (2 octets)
 LF920:
         clc                                     ; F920 18
         ; Masque l'instruction suivante
         .byte   $24                             ; F921 24
 
+; Calcule l'adresse de fin de l'arborescence et le nombre de pages
+;
+; Entrée:
+;    A: conservé
+;
+; Sortie:
+;    XY: Adresse de fin de l'arborescence+1
+;    VARAPL: Adresse de fin de l'arborescence
+;    VARAPL+2: nombre de pages (2 octets)
 LF922:
         sec                                     ; F922 38
 
+        ; Sauvegarde A et P
         pha                                     ; F923 48
         php                                     ; F924 08
-        lda     #$00                            ; F925 A9 00
-        ldy     #$40                            ; F927 A0 40
+
+        lda     #<BARBRE                        ; F925 A9 00
+        ldy     #>BARBRE                        ; F927 A0 40
         sta     VARAPL                          ; F929 85 D0
-        sty     $D1                             ; F92B 84 D1
+        sty     VARAPL+1                        ; F92B 84 D1
+
         ldy     #$00                            ; F92D A0 00
-        sty     $D2                             ; F92F 84 D2
-        sty     $D3                             ; F931 84 D3
+        sty     VARAPL+2                        ; F92F 84 D2
+        sty     VARAPL+3                        ; F931 84 D3
+
 LF933:
+        ; Fin de l'arborescence atteinte?
         lda     (VARAPL),y                      ; F933 B1 D0
         bne     LF96C                           ; F935 D0 35
 
+        ; Restaure P
         plp                                     ; F937 28
+
+        ; Si C=0, on veut ajouté une nouvelle page vide
         bcc     LF944                           ; F938 90 0A
 
+        ; Restaure A
         pla                                     ; F93A 68
+
+        ; XY := (VARAPL)+1
         ldx     VARAPL                          ; F93B A6 D0
-        ldy     $D1                             ; F93D A4 D1
+        ldy     VARAPL+1                        ; F93D A4 D1
         inx                                     ; F93F E8
         bne     LF943                           ; F940 D0 01
-
         iny                                     ; F942 C8
+
 LF943:
         rts                                     ; F943 60
 
 ; ----------------------------------------------------------------------------
+; Place l'entête de la page
 LF944:
+        ; Copie "PAGE000" suivi de 10 octets nul
         lda     LF6C4,y                         ; F944 B9 C4 F6
         sta     (VARAPL),y                      ; F947 91 D0
         iny                                     ; F949 C8
         cpy     #$11                            ; F94A C0 11
         bne     LF944                           ; F94C D0 F6
 
+        ; Restaure A (sauvegardé en LF938)
         pla                                     ; F94E 68
+
+        ; Ajoute A après "PAGExxx"
         ldy     #$0C                            ; F94F A0 0C
         sta     (VARAPL),y                      ; F951 91 D0
-        lda     #$30                            ; F953 A9 30
+
+        lda     #'0'                            ; F953 A9 30
         sta     DEFAFF                          ; F955 85 14
+
+        ; Calcule VARAPL+4, résultat dans TR5+TR6
+        ; soit juste après "PAGE"
+        ; (pour XBINDX)
         lda     VARAPL                          ; F957 A5 D0
         adc     #$04                            ; F959 69 04
         sta     TR5                             ; F95B 85 11
-        lda     $D1                             ; F95D A5 D1
+        lda     VARAPL+1                        ; F95D A5 D1
         adc     #$00                            ; F95F 69 00
         sta     TR6                             ; F961 85 12
-        lda     $D2                             ; F963 A5 D2
-        ldy     $D3                             ; F965 A4 D3
+
+        ; Conversion du nombre de pages en chaine
+        ; résultat en (TR5)
+        lda     VARAPL+2                        ; F963 A5 D2
+        ldy     VARAPL+3                        ; F965 A4 D3
         ldx     #$01                            ; F967 A2 01
         _XBINDX                                 ; F969 00 28
+
         rts                                     ; F96B 60
 
 ; ----------------------------------------------------------------------------
 LF96C:
-        inc     $D2                             ; F96C E6 D2
+        ; Incrémente le nombre de pages
+        inc     VARAPL+2                        ; F96C E6 D2
         bne     LF972                           ; F96E D0 02
-        inc     $D3                             ; F970 E6 D3
+        inc     VARAPL+3                        ; F970 E6 D3
 
 LF972:
+        ; Passe à la page suivante dans l'arborescence
         clc                                     ; F972 18
         adc     VARAPL                          ; F973 65 D0
         sta     VARAPL                          ; F975 85 D0
         bcc     LF933                           ; F977 90 BA
-        inc     $D1                             ; F979 E6 D1
+        inc     VARAPL+1                        ; F979 E6 D1
         bcs     LF933                           ; F97B B0 B6
 
+; ----------------------------------------------------------------------------
+; Prend un caractère à l'écran (C=1 si caractère alpha)
+;
+; Entrée:
+;    Y: Offset sur la ligne
+;
+; Sortie:
+;    A: Caractère lu (& $7F)
+;    Y: inchangé
+;    C:0 si >'Z' ou < 'A'
+;    C:1 si >= 'A'
 LF97D:
+        ; Prend un caractère sur l'écran
         lda     (ADSCR),y                       ; F97D B1 26
         and     #$7F                            ; F97F 29 7F
-        cmp     #$5B                            ; F981 C9 5B
+
+        ; > 'Z'? -> Fin C=0
+        cmp     #'Z'+1                          ; F981 C9 5B
         bcs     LF988                           ; F983 B0 03
 
-        cmp     #$41                            ; F985 C9 41
+        ; Fin (C=1 si >= 'A')
+        cmp     #'A'                            ; F985 C9 41
         rts                                     ; F987 60
 
 ; ----------------------------------------------------------------------------
@@ -4548,19 +4863,28 @@ LF988:
         rts                                     ; F989 60
 
 ; ----------------------------------------------------------------------------
+; Edtion ou nouveau serveur
+;
+; Entrée:
+;    X:  0 -> 'edition'
+;        1 -> "nouveau serveur"
 LF98A:
         txa                                     ; F98A 8A
         beq     LF9BC                           ; F98B F0 2F
 
         bne     LF9A3                           ; F98D D0 14
 
+; ----------------------------------------------------------------------------
+; Calcule l'adresse de fin de l'arborescence ainsi que le nombre de pages
+; et met à jour DESALO et FISALO
 LF98F:
         ; DESALO := BARBRE
-        lda     #$00                            ; F98F A9 00
-        ldy     #$40                            ; F991 A0 40
+        lda     #<BARBRE                        ; F98F A9 00
+        ldy     #>BARBRE                        ; F991 A0 40
         sta     DESALO                          ; F993 8D 2D 05
         sty     DESALO+1                        ; F996 8C 2E 05
 
+        ; Calcule l'adresse de fin de l'arborescence et le nombre de pages
         jsr     LF922                           ; F999 20 22 F9
         stx     FISALO                          ; F99C 8E 2F 05
         sty     FISALO+1                        ; F99F 8C 30 05
@@ -4568,71 +4892,111 @@ LF9A2:
         rts                                     ; F9A2 60
 
 ; ----------------------------------------------------------------------------
+; Nouveau serveur
 LF9A3:
+        ; "validation (O/N):"
         lda     #$56                            ; F9A3 A9 56
         ldy     #$ED                            ; F9A5 A0 ED
         _XWSTR0                                 ; F9A7 00 14
 
+        ; Attend une touche
         _XRDW0                                  ; F9A9 00 0C
-        cmp     #$4F                            ; F9AB C9 4F
+
+        cmp     #'O'                            ; F9AB C9 4F
         bne     LF9A2                           ; F9AD D0 F3
 
+        ; Indique que l'arborescence est vide
         lda     #$00                            ; F9AF A9 00
         sta     BARBRE                          ; F9B1 8D 00 40
+
+        ; Calcule l'adresse de fin de l'arborescence et le nombre de pages
+        ; et créé une nouvelle page vide
         lda     #$60                            ; F9B4 A9 60
         jsr     LF920                           ; F9B6 20 20 F9
+
+        ; Calcule l'adresse de fin de l'arborescence ainsi que le nombre de pages
+        ; et met à jour DESALO et FISALO
         jmp     LF98F                           ; F9B9 4C 8F F9
 
 ; ----------------------------------------------------------------------------
+; Edition du serveur
 LF9BC:
+        ; Arborescence vide? -> Fin
         lda     BARBRE                          ; F9BC AD 00 40
         beq     LF9F8                           ; F9BF F0 37
 
+       ; Affiche le curseur dans la fenêtre 0
         _XCOSCR                                 ; F9C1 00 34
+
+        ; AX := 0
         lda     #$00                            ; F9C3 A9 00
         tax                                     ; F9C5 AA
 LF9C6:
-        lsr     $DE                             ; F9C6 46 DE
+        ; Force b7=0
+        lsr     VARAPL+14                       ; F9C6 46 DE
+
+        ; Sauvegarde A
         pha                                     ; F9C8 48
+
+        ; Calcule la longueur de la fenêtre
+        ; Résultat dans VARAPL+9
         sec                                     ; F9C9 38
         lda     SCRFX                           ; F9CA AD 2C 02
         sbc     SCRDX                           ; F9CD ED 28 02
         adc     #$00                            ; F9D0 69 00
-        sta     $D9                             ; F9D2 85 D9
+        sta     VARAPL+9                        ; F9D2 85 D9
+
+        ; Calcule la hauteur de la fenêtre /2
+        ; Résultat dans VARAPL+11
         lda     SCRFY                           ; F9D4 AD 34 02
         sbc     SCRDY                           ; F9D7 ED 30 02
         lsr     a                               ; F9DA 4A
-        sta     $DB                             ; F9DB 85 DB
+        sta     VARAPL+11                       ; F9DB 85 DB
+
+        ; Restaure A
         pla                                     ; F9DD 68
         jsr     LFDB7                           ; F9DE 20 B7 FD
 
+        ; Curseur HOME
         lda     #$1E                            ; F9E1 A9 1E
         _XWR0                                   ; F9E3 00 10
 
-        lda     #$09                            ; F9E5 A9 09
+        lda     #KEY_RIGHT                      ; F9E5 A9 09
         _XWR0                                   ; F9E7 00 10
 
-        lda     #$09                            ; F9E9 A9 09
+        lda     #KEY_RIGHT                      ; F9E9 A9 09
         bne     LFA14                           ; F9EB D0 27
 
+; ----------------------------------------------------------------------------
 LF9ED:
+        ; Attend une touche
         _XRDW0                                  ; F9ED 00 0C
+
+        ; CTRL+C?
         asl     KBDCTC                          ; F9EF 0E 7E 02
         bcs     LF9F8                           ; F9F2 B0 04
 
-        cmp     #$1B                            ; F9F4 C9 1B
+
+        cmp     #KEY_ESC                        ; F9F4 C9 1B
         bne     LF9FB                           ; F9F6 D0 03
 
 LF9F8:
+        ; Calcule l'adresse de fin de l'arborescence ainsi que le nombre de pages
+        ; et met à jour DESALO et FISALO
+        ; Retour au menu SERVEUR
         jmp     LF98F                           ; F9F8 4C 8F F9
 
 ; ----------------------------------------------------------------------------
 LF9FB:
+        ; Sauvegarde A
         pha                                     ; F9FB 48
+
         ldy     SCRX                            ; F9FC AC 20 02
         lda     (ADSCR),y                       ; F9FF B1 26
         and     #$7F                            ; FA01 29 7F
-        sta     $024C                           ; FA03 8D 4C 02
+        sta     CURSCR                          ; FA03 8D 4C 02
+
+        ; Inverse les 8 caractères suivants à l'écran
         ldx     #$08                            ; FA06 A2 08
         dey                                     ; FA08 88
 LFA09:
@@ -4643,17 +5007,21 @@ LFA09:
         dex                                     ; FA10 CA
         bne     LFA09                           ; FA11 D0 F6
 
+        ; Restaure A
         pla                                     ; FA13 68
+
 LFA14:
-        cmp     #$89                            ; FA14 C9 89
+        ; FUNCT+I?
+        cmp     #KEY_FUNCT_I                    ; FA14 C9 89
         bne     LFA32                           ; FA16 D0 1A
 
+        ; Impression de l'arborescence
         sec                                     ; FA18 38
-        ror     $DE                             ; FA19 66 DE
+        ror     VARAPL+14                       ; FA19 66 DE
         lda     LPRFX                           ; FA1B AD 88 02
-        sta     $D9                             ; FA1E 85 D9
+        sta     VARAPL+9                        ; FA1E 85 D9
         lda     #$FF                            ; FA20 A9 FF
-        sta     $DB                             ; FA22 85 DB
+        sta     VARAPL+11                       ; FA22 85 DB
         ldx     $E6                             ; FA24 A6 E6
         lda     $E7                             ; FA26 A5 E7
         jsr     LFDB7                           ; FA28 20 B7 FD
@@ -4662,8 +5030,9 @@ LFA14:
         jmp     LF9C6                           ; FA2F 4C C6 F9
 
 ; ----------------------------------------------------------------------------
+; Déplacement vers la gauche dans la partie de l'arbre affichée?
 LFA32:
-        cmp     #$08                            ; FA32 C9 08
+        cmp     #KEY_LEFT                       ; FA32 C9 08
         bne     LFA61                           ; FA34 D0 2B
 
         lda     SCRX                            ; FA36 AD 20 02
@@ -4674,9 +5043,12 @@ LFA39:
         lda     #$29                            ; FA3D A9 29
         bne     LFA56                           ; FA3F D0 15
 
+; ----------------------------------------------------------------------------
 LFA41:
         sty     SCRX                            ; FA41 8C 20 02
+
 LFA44:
+        ; Boucle pour inverser les 8 caractères suivants à l'écran
         ldx     #$08                            ; FA44 A2 08
         ldy     SCRX                            ; FA46 AC 20 02
         dey                                     ; FA49 88
@@ -4686,26 +5058,31 @@ LFA4A:
         sta     (ADSCR),y                       ; FA4E 91 26
         iny                                     ; FA50 C8
         dex                                     ; FA51 CA
-
         bne     LFA4A                           ; FA52 D0 F6
+
         beq     LF9ED                           ; FA54 F0 97
 
+; ----------------------------------------------------------------------------
 LFA56:
         sbc     #$08                            ; FA56 E9 08
         tay                                     ; FA58 A8
+
+        ; Prend un caractère à l'écran (C=1 si caractère alpha)
         jsr     LF97D                           ; FA59 20 7D F9
         bcs     LFA41                           ; FA5C B0 E3
 
         tya                                     ; FA5E 98
         bcc     LFA39                           ; FA5F 90 D8
 
+; ----------------------------------------------------------------------------
+; Déplacement vers la droite dans la partie de l'arbre affichée?
 LFA61:
-        cmp     #$09                            ; FA61 C9 09
+        cmp     #KEY_RIGHT                      ; FA61 C9 09
         bne     LFA7A                           ; FA63 D0 15
 
         lda     SCRX                            ; FA65 AD 20 02
 LFA68:
-        cmp     #$21                            ; FA68 C9 21
+        cmp     #'!'                            ; FA68 C9 21
         bne     LFA6E                           ; FA6A D0 02
 
         lda     #$F9                            ; FA6C A9 F9
@@ -4713,25 +5090,32 @@ LFA6E:
         clc                                     ; FA6E 18
         adc     #$08                            ; FA6F 69 08
         tay                                     ; FA71 A8
+
+        ; Prend un caractère à l'écran (C=1 si caractère alpha)
         jsr     LF97D                           ; FA72 20 7D F9
         bcs     LFA41                           ; FA75 B0 CA
 
         tya                                     ; FA77 98
         bcc     LFA68                           ; FA78 90 EE
 
+; ----------------------------------------------------------------------------
+; Déplacement vers le bas dans la partie de l'arbre affichée?
 LFA7A:
-        cmp     #$0A                            ; FA7A C9 0A
+        cmp     #KEY_DOWN                       ; FA7A C9 0A
         bne     LFAAE                           ; FA7C D0 30
 
+        ; Ligne 25?
         lda     SCRY                            ; FA7E AD 24 02
         cmp     #$19                            ; FA81 C9 19
         beq     LFA44                           ; FA83 F0 BF
+
+        ; Non
 
         ldy     #$50                            ; FA85 A0 50
         ldx     #$28                            ; FA87 A2 28
 LFA89:
         lda     (ADSCR),y                       ; FA89 B1 26
-        cmp     #$20                            ; FA8B C9 20
+        cmp     #' '                            ; FA8B C9 20
         beq     LFA93                           ; FA8D F0 04
 
         cmp     #$10                            ; FA8F C9 10
@@ -4754,14 +5138,18 @@ LFA9A:
 
 LFAA2:
         ldy     SCRX                            ; FAA2 AC 20 02
+
+        ; Prend un caractère à l'écran (C=1 si caractère alpha)
         jsr     LF97D                           ; FAA5 20 7D F9
         bcs     LFA44                           ; FAA8 B0 9A
 
         lda     #$09                            ; FAAA A9 09
         bne     LFA61                           ; FAAC D0 B3
 
+; ----------------------------------------------------------------------------
+; Déplacement vers le haut dans la partie de l'arbre affichée?
 LFAAE:
-        cmp     #$0B                            ; FAAE C9 0B
+        cmp     #KEY_UP                         ; FAAE C9 0B
         bne     LFADC                           ; FAB0 D0 2A
 
         lda     SCRY                            ; FAB2 AD 24 02
@@ -4795,8 +5183,11 @@ LFAD1:
         jmp     LFAA2                           ; FAD9 4C A2 FA
 
 ; ----------------------------------------------------------------------------
+; Déplacement de l'arbre?
+;
+; la page sous le curseur se place en haut de l'écran
 LFADC:
-        cmp     #$20                            ; FADC C9 20
+        cmp     #' '                            ; FADC C9 20
         bne     LFAE9                           ; FADE D0 09
 
         jsr     LFCD3                           ; FAE0 20 D3 FC
@@ -4807,8 +5198,9 @@ LFAE6:
         jmp     LFB77                           ; FAE6 4C 77 FB
 
 ; ----------------------------------------------------------------------------
+; Nommer une page?
 LFAE9:
-        cmp     #$4E                            ; FAE9 C9 4E
+        cmp     #'N'                            ; FAE9 C9 4E
         bne     LFAE6                           ; FAEB D0 F9
 
         jsr     LFCD3                           ; FAED 20 D3 FC
@@ -4820,17 +5212,20 @@ LFAE9:
         lda     SCRX                            ; FAF7 AD 20 02
         sta     VARAPL                          ; FAFA 85 D0
 LFAFC:
+        ; Attend une touche
         _XRDW0                                  ; FAFC 00 0C
-        cmp     #$0D                            ; FAFE C9 0D
+
+        cmp     #KEY_RETURN                     ; FAFE C9 0D
         beq     LFB3A                           ; FB00 F0 38
 
-        cmp     #$7F                            ; FB02 C9 7F
+        cmp     #KEY_DEL                        ; FB02 C9 7F
         bne     LFB14                           ; FB04 D0 0E
 
         lda     SCRX                            ; FB06 AD 20 02
         cmp     VARAPL                          ; FB09 C5 D0
         beq     LFAFC                           ; FB0B F0 EF
 
+        ; "Affiche" un BS
         lda     #$08                            ; FB0D A9 08
         _XWR0                                   ; FB0F 00 10
 
@@ -4864,6 +5259,7 @@ LFB2A:
         cmp     #$07                            ; FB32 C9 07
         bcc     LFAFC                           ; FB34 90 C6
 
+        ; "Affiche" un BS
         lda     #$08                            ; FB36 A9 08
         _XWR0                                   ; FB38 00 10
 
@@ -4873,17 +5269,19 @@ LFB3A:
 
         ldy     VARAPL                          ; FB3E A4 D0
         sty     SCRX                            ; FB40 8C 20 02
+
+        ; Prend un caractère à l'écran (C=1 si caractère alpha)
         jsr     LF97D                           ; FB43 20 7D F9
         bcs     LFB4C                           ; FB46 B0 04
 
-        lda     #$58                            ; FB48 A9 58
+        lda     #'X'                            ; FB48 A9 58
         sta     (ADSCR),y                       ; FB4A 91 26
 LFB4C:
         ldx     #$F9                            ; FB4C A2 F9
         ldy     VARAPL                          ; FB4E A4 D0
 LFB50:
         lda     (ADSCR),y                       ; FB50 B1 26
-        sta     $0497,x                         ; FB52 9D 97 04
+        sta     BUFEDT-$F9,x                    ; FB52 9D 97 04
         iny                                     ; FB55 C8
         inx                                     ; FB56 E8
         bne     LFB50                           ; FB57 D0 F7
@@ -4899,9 +5297,10 @@ LFB50:
         sta     RESB+1                          ; FB66 85 03
         bcs     LFB8E                           ; FB68 B0 24
 
+        ; Copie de 7 caractères de BUFEDT vers RESb
         ldy     #$07                            ; FB6A A0 07
 LFB6C:
-        lda     $058F,y                         ; FB6C B9 8F 05
+        lda     BUFEDT-1,y                      ; FB6C B9 8F 05
         sta     (RESB),y                        ; FB6F 91 02
         dey                                     ; FB71 88
         bne     LFB6C                           ; FB72 D0 F8
@@ -4910,15 +5309,18 @@ LFB74:
         jmp     LFA44                           ; FB74 4C 44 FA
 
 ; ----------------------------------------------------------------------------
+; Insertion d'un page simple (blanche)?
 LFB77:
-        cmp     #$50                            ; FB77 C9 50
+        cmp     #'P'                            ; FB77 C9 50
         bne     LFB7F                           ; FB79 D0 04
 
         lda     #$00                            ; FB7B A9 00
         beq     LFB85                           ; FB7D F0 06
 
+; ----------------------------------------------------------------------------
+; Insertion d'un menu (cyan)?
 LFB7F:
-        cmp     #$53                            ; FB7F C9 53
+        cmp     #'S'                            ; FB7F C9 53
         bne     LFB95                           ; FB81 D0 12
 
         lda     #$C0                            ; FB83 A9 C0
@@ -4934,8 +5336,9 @@ LFB8E:
         jmp     LF9C6                           ; FB92 4C C6 F9
 
 ; ----------------------------------------------------------------------------
+; Retour sur la première page de l'arborescence?
 LFB95:
-        cmp     #$44                            ; FB95 C9 44
+        cmp     #'D'                            ; FB95 C9 44
         bne     LFB9F                           ; FB97 D0 06
 
         lda     #$00                            ; FB99 A9 00
@@ -4943,8 +5346,9 @@ LFB95:
         jmp     LF9C6                           ; FB9C 4C C6 F9
 
 ; ----------------------------------------------------------------------------
+; Suppression de la page?
 LFB9F:
-        cmp     #$7F                            ; FB9F C9 7F
+        cmp     #KEY_DEL                        ; FB9F C9 7F
         bne     LFBB6                           ; FBA1 D0 13
 
         ldy     SCRY                            ; FBA3 AC 24 02
@@ -4959,22 +5363,27 @@ LFBAF:
         jmp     LF9C6                           ; FBB3 4C C6 F9
 
 ; ----------------------------------------------------------------------------
+; Insertion d'une BAL (verte)?
 LFBB6:
-        cmp     #$42                            ; FBB6 C9 42
+        cmp     #'B'                            ; FBB6 C9 42
         bne     LFBBE                           ; FBB8 D0 04
 
         lda     #$41                            ; FBBA A9 41
         bne     LFB85                           ; FBBC D0 C7
 
+; ----------------------------------------------------------------------------
+; Insertion d'une page d'accès au basic (rouge)?
 LFBBE:
-        cmp     #$48                            ; FBBE C9 48
+        cmp     #'H'                            ; FBBE C9 48
         bne     LFBC6                           ; FBC0 D0 04
 
         lda     #$08                            ; FBC2 A9 08
         bne     LFB85                           ; FBC4 D0 BF
 
+; ----------------------------------------------------------------------------
+; Bascule de temporisation d'une page (jaune)?
 LFBC6:
-        cmp     #$41                            ; FBC6 C9 41
+        cmp     #'A'                            ; FBC6 C9 41
         bne     LFC47                           ; FBC8 D0 7D
 
         jsr     LFCD3                           ; FBCA 20 D3 FC
@@ -4990,6 +5399,7 @@ LFBC6:
         and     #$10                            ; FBE0 29 10
         beq     LFBAF                           ; FBE2 F0 CB
 
+        ; place "    sec" à l'emplacement actuel du curseur
         ldx     #$00                            ; FBE4 A2 00
         ldy     SCRX                            ; FBE6 AC 20 02
 LFBE9:
@@ -5001,8 +5411,11 @@ LFBE9:
         bne     LFBE9                           ; FBF2 D0 F5
 
 LFBF4:
-        lda     #$20                            ; FBF4 A9 20
+        lda     #' '                            ; FBF4 A9 20
         sta     DEFAFF                          ; FBF6 85 14
+
+        ; Calcule l'adresse de l'emplacement du curseur à l'écran
+        ; et place le résultat en TR5-TR6 (pour XBINDX)
         clc                                     ; FBF8 18
         lda     SCRX                            ; FBF9 AD 20 02
         adc     ADSCR                           ; FBFC 65 26
@@ -5010,41 +5423,66 @@ LFBF4:
         lda     ADSCR+1                         ; FC00 A5 27
         adc     #$00                            ; FC02 69 00
         sta     TR6                             ; FC04 85 12
+
+        ; Converti (RESB),Y en chaine sur 3 caractères
+        ; et place le résultat en (TR6)
+        ; soit devant "sec"
         ldy     #$0D                            ; FC06 A0 0D
         lda     (RESB),y                        ; FC08 B1 02
         ldy     #$00                            ; FC0A A0 00
         ldx     #$01                            ; FC0C A2 01
         _XBINDX                                 ; FC0E 00 28
+
+        ; Attend une touche
         _XRDW0                                  ; FC10 00 0C
+
         ldy     #$0D                            ; FC12 A0 0D
-        cmp     #$30                            ; FC14 C9 30
+        cmp     #'0'                            ; FC14 C9 30
         bne     LFC1E                           ; FC16 D0 06
 
+        ; Place 0 en (RESB),Y et boucle
         lda     #$00                            ; FC18 A9 00
         sta     (RESB),y                        ; FC1A 91 02
         beq     LFBF4                           ; FC1C F0 D6
 
+; ----------------------------------------------------------------------------
+; Incrémente ou décrémente (RESB),Y si KEY_UP ou KEY_DOWN
+;
+; Entrée:
+;    A: Touche appuyée
+;
+; Sortie:
+;    Incrémente (RESB),Y si KEY_UP
+;    Décrémente (RESB),Y si KEY_DOWN
+
 LFC1E:
         ldx     #$FE                            ; FC1E A2 FE
-        cmp     #$0A                            ; FC20 C9 0A
+        cmp     #KEY_DOWN                       ; FC20 C9 0A
         beq     LFC2A                           ; FC22 F0 06
 
-        cmp     #$0B                            ; FC24 C9 0B
+        cmp     #KEY_UP                         ; FC24 C9 0B
         bne     LFC32                           ; FC26 D0 0A
 
         ldx     #$00                            ; FC28 A2 00
 LFC2A:
+        ; Dans tous les cas, ici C=1
+        ; Donc on décrémente si KEY_DOWN ($FE+1 = $FF)
+        ; et on incrémente de KEY_UP ($00+1 = $01)
         txa                                     ; FC2A 8A
         adc     (RESB),y                        ; FC2B 71 02
         sta     (RESB),y                        ; FC2D 91 02
+
+        ; Boucle
         jmp     LFBF4                           ; FC2F 4C F4 FB
 
 ; ----------------------------------------------------------------------------
 LFC32:
+        ; Copie et inverse 8 caractères depuis L9CC1 vers l'écran
+        ; à l'emplacement actuel du curseur
         ldx     #$01                            ; FC32 A2 01
         ldy     SCRX                            ; FC34 AC 20 02
 LFC37:
-        lda     L9CC0,x                         ; FC37 BD C0 9C
+        lda     PAGE,x                          ; FC37 BD C0 9C
         ora     #$80                            ; FC3A 09 80
         sta     (ADSCR),y                       ; FC3C 91 26
         iny                                     ; FC3E C8
@@ -5055,13 +5493,14 @@ LFC37:
         jmp     LFBAF                           ; FC44 4C AF FB
 
 ; ----------------------------------------------------------------------------
+; Bascule de fin de branche visible (carré blanc)?
 LFC47:
-        cmp     #$46                            ; FC47 C9 46
+        cmp     #'F'                            ; FC47 C9 46
         bne     LFC7B                           ; FC49 D0 30
 
         jsr     LFCD3                           ; FC4B 20 D3 FC
         jsr     LE8AB                           ; FC4E 20 AB E8
-        bit     L9CC0                           ; FC51 2C C0 9C
+        bit     PAGE                            ; FC51 2C C0 9C
         bvs     LFC78                           ; FC54 70 22
 
         ldy     #$0C                            ; FC56 A0 0C
@@ -5091,63 +5530,94 @@ LFC78:
         jmp     LFA44                           ; FC78 4C 44 FA
 
 ; ----------------------------------------------------------------------------
+; Insertion de la tête d'un journal cyclique (magenta)
 LFC7B:
-        cmp     #$4A                            ; FC7B C9 4A
+        cmp     #'J'                            ; FC7B C9 4A
         bne     LFC84                           ; FC7D D0 05
 
         lda     #$04                            ; FC7F A9 04
         jmp     LFB85                           ; FC81 4C 85 FB
 
 ; ----------------------------------------------------------------------------
+; Choix du lecteur de disques?
 LFC84:
-        cmp     #$4C                            ; FC84 C9 4C
+        cmp     #'L'                            ; FC84 C9 4C
         bne     LFCC3                           ; FC86 D0 3B
 
         jsr     LFCD3                           ; FC88 20 D3 FC
         jsr     LE8AB                           ; FC8B 20 AB E8
+
+        ; Sauvegarde le caractère précédent le curseur à l'écran
         ldy     SCRX                            ; FC8E AC 20 02
         dey                                     ; FC91 88
         lda     (ADSCR),y                       ; FC92 B1 26
         pha                                     ; FC94 48
+
+        ; Récupère le lecteur courant et l'affiche
+        ; à l'emplacement du curseur
         lda     $9CCF                           ; FC95 AD CF 9C
         asl     a                               ; FC98 0A
         rol     a                               ; FC99 2A
         rol     a                               ; FC9A 2A
         and     #$03                            ; FC9B 29 03
-        adc     #$41                            ; FC9D 69 41
+        adc     #'A'                            ; FC9D 69 41
         sta     (ADSCR),y                       ; FC9F 91 26
+
 LFCA1:
+        ; Attend une touche
         _XRDW0                                  ; FCA1 00 0C
-        cmp     #$41                            ; FCA3 C9 41
+
+        cmp     #'A'                            ; FCA3 C9 41
         bcc     LFCBD                           ; FCA5 90 16
 
-        cmp     #$45                            ; FCA7 C9 45
+        cmp     #'E'                            ; FCA7 C9 45
         bcs     LFCBD                           ; FCA9 B0 12
 
+        ; Ici 'A', 'B', 'C', 'D'
+
+        ; Affiche le caractère
         sta     (ADSCR),y                       ; FCAB 91 26
+
+        ; Code le n° de lecteur dans b7-b6
+        ; et le sauvegarde en (RESB),$0F
         sbc     #$40                            ; FCAD E9 40
         lsr     a                               ; FCAF 4A
         ror     a                               ; FCB0 6A
         ror     a                               ; FCB1 6A
         ldy     #$0F                            ; FCB2 A0 0F
         sta     (RESB),y                        ; FCB4 91 02
+
+        ; 1 caractère en arrière
         ldy     SCRX                            ; FCB6 AC 20 02
         dey                                     ; FCB9 88
+
+        ; Boucle
         jmp     LFCA1                           ; FCBA 4C A1 FC
 
 ; ----------------------------------------------------------------------------
 LFCBD:
+        ; Restaure le caractère sauvegardé en LFC94
         pla                                     ; FCBD 68
         sta     (ADSCR),y                       ; FCBE 91 26
+
+        ; Sortie
         jmp     LFA44                           ; FCC0 4C 44 FA
 
 ; ----------------------------------------------------------------------------
+; Accès direct au menu d'accès disque?
 LFCC3:
-        cmp     #$05                            ; FCC3 C9 05
+        cmp     #KEY_CTRL_E                     ; FCC3 C9 05
         bne     LFCD0                           ; FCC5 D0 09
 
+        ; Calcule l'adresse de fin de l'arborescence ainsi que le nombre de pages
+        ; et met à jour DESALO et FISALO
         jsr     LF98F                           ; FCC7 20 8F F9
+
+        ; -> ACCES DISQUE SERVEUR
+        ; (au retour X=0)
         jsr     LE17F                           ; FCCA 20 7F E1
+
+        ; Comme X=0 -> edition du serveur
         jmp     LF9BC                           ; FCCD 4C BC F9
 
 ; ----------------------------------------------------------------------------
@@ -5171,7 +5641,7 @@ LFCD8:
 
 ; ----------------------------------------------------------------------------
 LFCE8:
-        bit     $DE                             ; FCE8 24 DE
+        bit     VARAPL+14                       ; FCE8 24 DE
         bpl     LFCF3                           ; FCEA 10 07
 
         _XLPCRL                                 ; FCEC 00 49
@@ -5211,10 +5681,10 @@ LFD12:
 
 ; ----------------------------------------------------------------------------
 LFD19:
-        bit     $DE                             ; FD19 24 DE
+        bit     VARAPL+14                       ; FD19 24 DE
         bpl     LFD3B                           ; FD1B 10 1E
 
-        sty     $DC                             ; FD1D 84 DC
+        sty     VARAPL+12                       ; FD1D 84 DC
         pha                                     ; FD1F 48
         cmp     #$80                            ; FD20 C9 80
         bcs     LFD33                           ; FD22 B0 0F
@@ -5234,7 +5704,7 @@ LFD33:
         lda     #$20                            ; FD33 A9 20
 LFD35:
         _XLPRBI                                 ; FD35 00 48
-        ldy     $DC                             ; FD37 A4 DC
+        ldy     VARAPL+12                       ; FD37 A4 DC
         pla                                     ; FD39 68
         rts                                     ; FD3A 60
 
@@ -5249,12 +5719,12 @@ LFD3E:
         .byte   $2B                             ; FD46 2B
 ; ----------------------------------------------------------------------------
 LFD47:
-        lda     $DA                             ; FD47 A5 DA
-        sta     $D7                             ; FD49 85 D7
+        lda     VARAPL+10                       ; FD47 A5 DA
+        sta     VARAPL+7                        ; FD49 85 D7
         lda     #$00                            ; FD4B A9 00
-        sta     $D8                             ; FD4D 85 D8
+        sta     VARAPL+8                        ; FD4D 85 D8
 LFD4F:
-        ldx     $D8                             ; FD4F A6 D8
+        ldx     VARAPL+8                        ; FD4F A6 D8
         lda     $9D90,x                         ; FD51 BD 90 9D
         bpl     LFDA8                           ; FD54 10 52
 
@@ -5309,8 +5779,8 @@ LFD98:
         bne     LFD98                           ; FD9F D0 F7
 
 LFDA1:
-        inc     $D8                             ; FDA1 E6 D8
-        dec     $D7                             ; FDA3 C6 D7
+        inc     VARAPL+8                        ; FDA1 E6 D8
+        dec     VARAPL+7                        ; FDA3 C6 D7
         bne     LFD4F                           ; FDA5 D0 A8
 
         rts                                     ; FDA7 60
@@ -5335,15 +5805,15 @@ LFDB7:
         pha                                     ; FDC0 48
 LFDC1:
         jsr     LFCE8                           ; FDC1 20 E8 FC
-        lda     $D9                             ; FDC4 A5 D9
+        lda     VARAPL+9                        ; FDC4 A5 D9
         lsr     a                               ; FDC6 4A
         lsr     a                               ; FDC7 4A
         lsr     a                               ; FDC8 4A
-        sta     $DA                             ; FDC9 85 DA
+        sta     VARAPL+10                       ; FDC9 85 DA
         lsr     a                               ; FDCB 4A
         pha                                     ; FDCC 48
-        lda     $DB                             ; FDCD A5 DB
-        sta     $DD                             ; FDCF 85 DD
+        lda     VARAPL+11                       ; FDCD A5 DB
+        sta     VARAPL+13                       ; FDCF 85 DD
         pla                                     ; FDD1 68
         tax                                     ; FDD2 AA
         lda     RESB                            ; FDD3 A5 02
@@ -5355,9 +5825,9 @@ LFDC1:
 LFDDF:
         jsr     LFD47                           ; FDDF 20 47 FD
         lda     #$00                            ; FDE2 A9 00
-        sta     $DF                             ; FDE4 85 DF
+        sta     VARAPL+15                       ; FDE4 85 DF
 LFDE6:
-        ldx     $DF                             ; FDE6 A6 DF
+        ldx     VARAPL+15                       ; FDE6 A6 DF
         lda     $9D90,x                         ; FDE8 BD 90 9D
         bpl     LFE25                           ; FDEB 10 38
 
@@ -5379,7 +5849,7 @@ LFDE6:
         lda     (RESB),y                        ; FE06 B1 02
         jsr     LE8AB                           ; FE08 20 AB E8
         lda     RESB                            ; FE0B A5 02
-        ldx     $DF                             ; FE0D A6 DF
+        ldx     VARAPL+15                       ; FE0D A6 DF
         sta     $9DA0,x                         ; FE0F 9D A0 9D
         lda     RESB+1                          ; FE12 A5 03
 LFE14:
@@ -5394,15 +5864,15 @@ LFE14:
         lda     #$60                            ; FE20 A9 60
         sta     $9D00,x                         ; FE22 9D 00 9D
 LFE25:
-        inc     $DF                             ; FE25 E6 DF
-        lda     $DF                             ; FE27 A5 DF
-        cmp     $DA                             ; FE29 C5 DA
+        inc     VARAPL+15                       ; FE25 E6 DF
+        lda     VARAPL+15                       ; FE27 A5 DF
+        cmp     VARAPL+10                       ; FE29 C5 DA
         bne     LFDE6                           ; FE2B D0 B9
 
         lda     #$00                            ; FE2D A9 00
-        sta     $DF                             ; FE2F 85 DF
+        sta     VARAPL+15                       ; FE2F 85 DF
 LFE31:
-        ldx     $DF                             ; FE31 A6 DF
+        ldx     VARAPL+15                       ; FE31 A6 DF
         lda     $9D90,x                         ; FE33 BD 90 9D
         bmi     LFE3B                           ; FE36 30 03
 
@@ -5412,11 +5882,11 @@ LFE38:
 ; ----------------------------------------------------------------------------
 LFE3B:
         and     #$7F                            ; FE3B 29 7F
-        sta     $D5                             ; FE3D 85 D5
+        sta     VARAPL+5                        ; FE3D 85 D5
         lda     $9D80,x                         ; FE3F BD 80 9D
-        sta     $D4                             ; FE42 85 D4
+        sta     VARAPL+4                        ; FE42 85 D4
         ldy     #$0C                            ; FE44 A0 0C
-        lda     ($D4),y                         ; FE46 B1 D4
+        lda     (VARAPL+4),y                    ; FE46 B1 D4
         bpl     LFE38                           ; FE48 10 EE
 
         ldy     #$FF                            ; FE4A A0 FF
@@ -5431,13 +5901,13 @@ LFE4C:
 LFE55:
         sty     VARAPL                          ; FE55 84 D0
         inx                                     ; FE57 E8
-        stx     $D1                             ; FE58 86 D1
+        stx     VARAPL+1                        ; FE58 86 D1
         ldy     #$00                            ; FE5A A0 00
-        ldx     $DF                             ; FE5C A6 DF
+        ldx     VARAPL+15                       ; FE5C A6 DF
 LFE5E:
         iny                                     ; FE5E C8
         inx                                     ; FE5F E8
-        cpx     $DA                             ; FE60 E4 DA
+        cpx     VARAPL+10                       ; FE60 E4 DA
         bcs     LFE69                           ; FE62 B0 05
 
         lda     $9DB0,x                         ; FE64 BD B0 9D
@@ -5447,20 +5917,20 @@ LFE69:
         clc                                     ; FE69 18
         tya                                     ; FE6A 98
         adc     VARAPL                          ; FE6B 65 D0
-        sta     $D2                             ; FE6D 85 D2
+        sta     VARAPL+2                        ; FE6D 85 D2
         ldy     #$0D                            ; FE6F A0 0D
-        lda     ($D4),y                         ; FE71 B1 D4
+        lda     (VARAPL+4),y                    ; FE71 B1 D4
         bne     LFE7A                           ; FE73 D0 05
 
-        ldx     $DF                             ; FE75 A6 DF
+        ldx     VARAPL+15                       ; FE75 A6 DF
         lsr     $9DB0,x                         ; FE77 5E B0 9D
 LFE7A:
-        cmp     $D2                             ; FE7A C5 D2
+        cmp     VARAPL+2                        ; FE7A C5 D2
         beq     LFEA9                           ; FE7C F0 2B
 
         bcc     LFEA9                           ; FE7E 90 29
 
-        lda     $DF                             ; FE80 A5 DF
+        lda     VARAPL+15                       ; FE80 A5 DF
         asl     a                               ; FE82 0A
         asl     a                               ; FE83 0A
         asl     a                               ; FE84 0A
@@ -5471,15 +5941,15 @@ LFE7A:
         sta     $9D02,x                         ; FE8D 9D 02 9D
         lda     #$68                            ; FE90 A9 68
         sta     $9D01,x                         ; FE92 9D 01 9D
-        ldx     $DF                             ; FE95 A6 DF
+        ldx     VARAPL+15                       ; FE95 A6 DF
         lda     #$FF                            ; FE97 A9 FF
         sta     $9DB0,x                         ; FE99 9D B0 9D
-        bit     $DE                             ; FE9C 24 DE
+        bit     VARAPL+14                       ; FE9C 24 DE
         bpl     LFEA6                           ; FE9E 10 06
 
-        lda     $D4                             ; FEA0 A5 D4
+        lda     VARAPL+4                        ; FEA0 A5 D4
         pha                                     ; FEA2 48
-        lda     $D5                             ; FEA3 A5 D5
+        lda     VARAPL+5                        ; FEA3 A5 D5
         pha                                     ; FEA5 48
 LFEA6:
         jmp     LFF68                           ; FEA6 4C 68 FF
@@ -5490,7 +5960,7 @@ LFEA9:
         tax                                     ; FEAB AA
         beq     LFEA6                           ; FEAC F0 F8
 
-        lda     $D2                             ; FEAE A5 D2
+        lda     VARAPL+2                        ; FEAE A5 D2
         ldx     #$FF                            ; FEB0 A2 FF
 LFEB2:
         inx                                     ; FEB2 E8
@@ -5498,49 +5968,49 @@ LFEB2:
         sbc     VARAPL                          ; FEB4 E5 D0
         bcs     LFEB2                           ; FEB6 B0 FA
 
-        stx     $D3                             ; FEB8 86 D3
+        stx     VARAPL+3                        ; FEB8 86 D3
         ldx     VARAPL                          ; FEBA A6 D0
-        lda     $D2                             ; FEBC A5 D2
+        lda     VARAPL+2                        ; FEBC A5 D2
         clc                                     ; FEBE 18
         dex                                     ; FEBF CA
         beq     LFEC7                           ; FEC0 F0 05
 
 LFEC2:
-        sbc     $D3                             ; FEC2 E5 D3
+        sbc     VARAPL+3                        ; FEC2 E5 D3
         dex                                     ; FEC4 CA
         bne     LFEC2                           ; FEC5 D0 FB
 
 LFEC7:
         lsr     a                               ; FEC7 4A
         clc                                     ; FEC8 18
-        adc     $D1                             ; FEC9 65 D1
-        sta     $D1                             ; FECB 85 D1
+        adc     VARAPL+1                        ; FEC9 65 D1
+        sta     VARAPL+1                        ; FECB 85 D1
         sec                                     ; FECD 38
         ror     $E0                             ; FECE 66 E0
         asl     a                               ; FED0 0A
         asl     a                               ; FED1 0A
         asl     a                               ; FED2 0A
         adc     #$04                            ; FED3 69 04
-        sta     $D8                             ; FED5 85 D8
-        ldx     $DF                             ; FED7 A6 DF
+        sta     VARAPL+8                        ; FED5 85 D8
+        ldx     VARAPL+15                       ; FED7 A6 DF
         lsr     $9DB0,x                         ; FED9 5E B0 9D
         ldy     #$10                            ; FEDC A0 10
-        sty     $D6                             ; FEDE 84 D6
+        sty     VARAPL+6                        ; FEDE 84 D6
 LFEE0:
-        ldy     $D6                             ; FEE0 A4 D6
-        lda     ($D4),y                         ; FEE2 B1 D4
+        ldy     VARAPL+6                        ; FEE0 A4 D6
+        lda     (VARAPL+4),y                    ; FEE2 B1 D4
         tax                                     ; FEE4 AA
         iny                                     ; FEE5 C8
-        lda     ($D4),y                         ; FEE6 B1 D4
+        lda     (VARAPL+4),y                    ; FEE6 B1 D4
         jsr     LE8AB                           ; FEE8 20 AB E8
-        ldx     $D1                             ; FEEB A6 D1
+        ldx     VARAPL+1                        ; FEEB A6 D1
         lda     RESB                            ; FEED A5 02
         sta     $9DA0,x                         ; FEEF 9D A0 9D
         lda     RESB+1                          ; FEF2 A5 03
         ora     #$80                            ; FEF4 09 80
         sta     $9DB0,x                         ; FEF6 9D B0 9D
-        inc     $D6                             ; FEF9 E6 D6
-        inc     $D6                             ; FEFB E6 D6
+        inc     VARAPL+6                        ; FEF9 E6 D6
+        inc     VARAPL+6                        ; FEFB E6 D6
         bit     $E0                             ; FEFD 24 E0
         bpl     LFF1E                           ; FEFF 10 1D
 
@@ -5552,8 +6022,8 @@ LFEE0:
 
 ; ----------------------------------------------------------------------------
 LFF09:
-        ldx     $D8                             ; FF09 A6 D8
-        inc     $D8                             ; FF0B E6 D8
+        ldx     VARAPL+8                        ; FF09 A6 D8
+        inc     VARAPL+8                        ; FF0B E6 D8
         ldy     #$67                            ; FF0D A0 67
         lda     $9D00,x                         ; FF0F BD 00 9D
         cmp     #$60                            ; FF12 C9 60
@@ -5569,14 +6039,14 @@ LFF1E:
         dex                                     ; FF20 CA
         bne     LFF5A                           ; FF21 D0 37
 
-        lda     $D1                             ; FF23 A5 D1
+        lda     VARAPL+1                        ; FF23 A5 D1
         asl     a                               ; FF25 0A
         asl     a                               ; FF26 0A
         asl     a                               ; FF27 0A
         adc     #$06                            ; FF28 69 06
-        sbc     $D8                             ; FF2A E5 D8
+        sbc     VARAPL+8                        ; FF2A E5 D8
         tay                                     ; FF2C A8
-        ldx     $D8                             ; FF2D A6 D8
+        ldx     VARAPL+8                        ; FF2D A6 D8
 LFF2F:
         dey                                     ; FF2F 88
         beq     LFF4B                           ; FF30 F0 19
@@ -5611,9 +6081,9 @@ LFF56:
         sta     $9D00,x                         ; FF57 9D 00 9D
 LFF5A:
         clc                                     ; FF5A 18
-        lda     $D1                             ; FF5B A5 D1
-        adc     $D3                             ; FF5D 65 D3
-        sta     $D1                             ; FF5F 85 D1
+        lda     VARAPL+1                        ; FF5B A5 D1
+        adc     VARAPL+3                        ; FF5D 65 D3
+        sta     VARAPL+1                        ; FF5F 85 D1
         dec     VARAPL                          ; FF61 C6 D0
         beq     LFF68                           ; FF63 F0 03
 
@@ -5621,9 +6091,9 @@ LFF5A:
 
 ; ----------------------------------------------------------------------------
 LFF68:
-        inc     $DF                             ; FF68 E6 DF
-        lda     $DF                             ; FF6A A5 DF
-        cmp     $DA                             ; FF6C C5 DA
+        inc     VARAPL+15                       ; FF68 E6 DF
+        lda     VARAPL+15                       ; FF6A A5 DF
+        cmp     VARAPL+10                       ; FF6C C5 DA
         beq     LFF73                           ; FF6E F0 03
 
         jmp     LFE31                           ; FF70 4C 31 FE
@@ -5650,11 +6120,11 @@ LFF89:
         lda     $9D00,x                         ; FF89 BD 00 9D
         jsr     LFD19                           ; FF8C 20 19 FD
         inx                                     ; FF8F E8
-        cpx     $D9                             ; FF90 E4 D9
+        cpx     VARAPL+9                        ; FF90 E4 D9
         bne     LFF89                           ; FF92 D0 F5
 
         jsr     LFD01                           ; FF94 20 01 FD
-        dec     $DD                             ; FF97 C6 DD
+        dec     VARAPL+13                       ; FF97 C6 DD
         beq     LFFA5                           ; FF99 F0 0A
 
         ldx     #$0F                            ; FF9B A2 0F
