@@ -160,6 +160,16 @@ label { addr $0590; name "BUFEDT"; comment "Buffer Editeur de Texte"; };
 
 
 ############################################################
+# Page 40
+############################################################
+label { addr $4000; size $4000; name "BARBRE"; comment "Buffer arborescence"; };
+
+############################################################
+# Page 80
+############################################################
+label { addr $8000; size $0C00; name "BUFTXT"; comment "Buffer code VIDEOTEX (3ko maxi)"; };
+
+############################################################
 # Page 90
 ############################################################
 label { addr $9000; size $0400; name "BVDTAS"; comment "Buffer attributs VDT"; };
@@ -178,6 +188,9 @@ label { addr $BF68; size $0028; name "SCRL25"; comment "Ecran: ligne 25"; };
 ############################################################
 # Cartouche Telematic v2.0b
 ############################################################
+label { addr $e045; name "APLIC"; comment "Instruction Hyperbasic APLIC"; };
+
+
 range { start $e204; end $e22f; type texttable; name "STARTMENU"; };
 range { start $e230; end $e271; type texttable; name "MENU1"; };
 range { start $e272; end $e283; type texttable; name "LE272"; };
@@ -191,8 +204,8 @@ range { start $e2e7; end $e2f8; type texttable; };
 range { start $e2f9; end $e30a; type texttable; };
 range { start $e30b; end $e321; type texttable; };
 range { start $e322; end $e33a; type texttable; };
-range { start $e33b; end $e349; type texttable; };
-range { start $e34a; end $e353; type texttable; };
+range { start $e33b; end $e34a; type texttable; };
+range { start $e34b; end $e353; type texttable; name "LE34B"; };
 range { start $e354; end $e35a; type texttable; name "LE354"; };
 range { start $e35b; end $e367; type texttable; name "LE35B"; };
 range { start $e368; end $e36f; type texttable; };
@@ -219,6 +232,8 @@ range { start $e437; end $e446; type texttable; };
 
 range { start $e447; end $e44a; type bytetable; name "LE447"; };
 range { start $e44b; end $e4a5; type bytetable; name "LE44B"; };
+
+label { addr $e4a6; name "SERVEUR"; comment "Instruction Hyperbasic SERVEUR"; };
 
 range { start $e62f; end $e644; type texttable; name "LE62F"; };
 range { start $e645; end $e6b1; type texttable; name "LE645"; };
@@ -251,6 +266,11 @@ range { start $e859; end $e863; type texttable; name "LE859"; };
 range { start $e864; end $e86d; type bytetable; };
 
 range { start $e98c; end $e998; type texttable; };
+
+label { addr $e9c7; name "_SERVEUR"; };
+
+label { addr $eccc; name "TINPUT"; comment "Instruction Hyperbasic TINPUT"; };
+
 range { start $ed4d; end $ed55; type bytetable; };
 range { start $ed56; end $ede2; type texttable; name "LED56"; };
 
@@ -262,7 +282,12 @@ range { start $f6bd; end $f6d4; type texttable; };
 range { start $fd3e; end $fd46; type bytetable; };
 
 range { start $ffb5; end $ffb8; type bytetable; };
-range { start $ffc8; end $fff7; type texttable; };
+
+label { addr $ffbc; name "XTINPUT"; comment "Point d'entrée pour l'instruction Hyperbasic 'TINPUT'"; };
+label { addr $ffbf; name "XAPLIC"; comment "Point d'entrée pour l'instruction Hyperbasic 'APLIC'"; };
+label { addr $ffc5; name "XSERVEUR"; comment "Point d'entrée pour l'instruction Hyperbasic 'SERVEUR'"; };
+
+range { start $ffc8; end $fff7; type texttable; name "ROMSIG"; };
 
 range { start $fff8; end $fff9; type addrtable; name "SIG_vector"; };
 range { start $fffa; end $fffb; type addrtable; name "NMI_vector"; };
