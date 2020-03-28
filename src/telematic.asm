@@ -149,7 +149,7 @@ LE02A:
 ;          3 -> Edition du serveur
 ;          4 -> menu de lancement du serveur
 ;          5 -> Reset du Telestrat (Appel à $C000 de la banque 7)
-APLIC:
+_XAPLIC:
         ; Initialise le lecteur par défaut et le nom du fichier
         jsr     LE08D                           ; E045 20 8D E0
 
@@ -201,12 +201,12 @@ LE062:
 LE071:
         sei                                     ; E071 78
         lsr     VIRQ                            ; E072 4E FA 02
-        ; Banque 7
+        ; Banque 7 (Telemon)
         lda     #$07                            ; E075 A9 07
         .byte   $2C                             ; E077 2C
 
 LE078:
-        ; Banque 6
+        ; Banque 6 (Hyperbasic)
         lda     #$06                            ; E078 A9 06
 
         ; Adresse: $C000
@@ -371,7 +371,7 @@ LE0FC:
 
 LE124:
         ; A = mode de fonctionnement du serveur
-        jsr     SERVEUR                         ; E124 20 A6 E4
+        jsr     _XSERVE                         ; E124 20 A6 E4
         jmp     LE0FC                           ; E127 4C FC E0
 
 ; ----------------------------------------------------------------------------
@@ -476,7 +476,7 @@ LE189:
 LE195:
         ; Mode du serveur: "Tester sans acces disque"
         ldx     #$03                            ; E195 A2 03
-        jsr     SERVEUR                         ; E197 20 A6 E4
+        jsr     _XSERVE                         ; E197 20 A6 E4
 
         jmp     LE14D                           ; E19A 4C 4D E1
 
@@ -781,7 +781,7 @@ LE44B:
         .byte   $0C,$00,$00                     ; E4A3 0C 00 00
 ; ----------------------------------------------------------------------------
 ; Instruction Hyperbasic SERVEUR
-SERVEUR:
+_XSERVE:
         jmp     _SERVEUR                        ; E4A6 4C C7 E9
 
 ; ----------------------------------------------------------------------------
@@ -1169,7 +1169,7 @@ LE608:
 ; Sortie:
 ;    A: code erreur STRATSED
 LE60B:
-        ; Appel VEXBNK dans la banque 0
+        ; Appel VEXBNK dans la banque 0 (STRATSED)
         lda     #$FF                            ; E60B A9 FF
         sta     VEXBNK+2                        ; E60D 8D 16 04
         lda     #$00                            ; E610 A9 00
@@ -2297,7 +2297,8 @@ LEC68:
         jmp     LEC76                           ; EC6F 4C 76 EC
 
 ; ----------------------------------------------------------------------------
-LEC72:
+; Saisir un caractère dans A
+_XTTGET:
         ; Timeout := 120 secondes
         ldx     #$78                            ; EC72 A2 78
         stx     TIMEUS                          ; EC74 86 42
@@ -2342,7 +2343,7 @@ LEC8C:
         ; Oui
 
         ; FUNCT+[ ou FUNCT+]?
-        bcs     LEC72                           ; EC98 B0 D8
+        bcs     _XTGET                          ; EC98 B0 D8
 
         ; Oui, A contient SS2 (jeu G2),
         ; Y contient le caractère
@@ -2351,7 +2352,7 @@ LEC8C:
         tya                                     ; EC9C 98
         _XWR1                                   ; EC9D 00 11
 
-        jmp     LEC72                           ; EC9F 4C 72 EC
+        jmp     _XTGET                          ; EC9F 4C 72 EC
 
 ; ----------------------------------------------------------------------------
 LECA2:
@@ -2373,7 +2374,7 @@ LECA9:
 
         ; Oui, on a reçu une touche de fonction
         ; il faut prendre le caractère suivant
-        jsr     LEC72                           ; ECB1 20 72 EC
+        jsr     _XTGET                          ; ECB1 20 72 EC
 
         ; Ajoute $5F au code du second caractère
         clc                                     ; ECB4 18
@@ -2404,7 +2405,7 @@ LECC4:
 
 ; ----------------------------------------------------------------------------
 ; Instruction Hyperbasic TINPUT
-TINPUT:
+_XTINPUT:
         ; Récupère la longueur de la saisie
         ldx     FACC1E                          ; ECCC A6 60
 
@@ -2449,7 +2450,7 @@ LECE0:
         sty     $E5                             ; ECE0 84 E5
 
         ; Attente d'un caractère
-        jsr     LEC72                           ; ECE2 20 72 EC
+        jsr     _XTGET                          ; ECE2 20 72 EC
 
         ; Restaure Y
         ldy     $E5                             ; ECE5 A4 E5
@@ -2879,7 +2880,7 @@ LEF51:
 
         ; Oui
 LEF58:
-        jsr     LF2EC                           ; EF58 20 EC F2
+        jsr     _XVDTEX                         ; EF58 20 EC F2
         asl     FLGKBD                          ; EF5B 0E 75 02
         sec                                     ; EF5E 38
         ror     FLGKBD                          ; EF5F 6E 75 02
@@ -2986,7 +2987,7 @@ LEFD8:
         ldy     VDTY                            ; EFEB A4 39
         sta     BUFTXT+4                        ; EFED 8D 04 80
         sty     BUFTXT+5                        ; EFF0 8C 05 80
-        jsr     LF2EC                           ; EFF3 20 EC F2
+        jsr     _XVDTEX                         ; EFF3 20 EC F2
         ldy     VARAPL+2                        ; EFF6 A4 D2
 LEFF8:
         ldx     VARAPL                          ; EFF8 A6 D0
@@ -3360,7 +3361,7 @@ LF1B8:
         pha                                     ; F1C3 48
         lda     VDTY                            ; F1C4 A5 39
         pha                                     ; F1C6 48
-        jsr     LF2EC                           ; F1C7 20 EC F2
+        jsr     _XVDTEX                         ; F1C7 20 EC F2
         pla                                     ; F1CA 68
         tay                                     ; F1CB A8
         pla                                     ; F1CC 68
@@ -3576,7 +3577,8 @@ LF2CF:
 LF2E9:
         jsr     LF2CF                           ; F2E9 20 CF F2
 
-LF2EC:
+; Lancer le codage de la page courante avec les paramètres courants
+VDTEX:
         ; Sauvegarde FLGVD1
         lda     FLGVD1                          ; F2EC A5 3D
         pha                                     ; F2EE 48
@@ -6156,20 +6158,24 @@ LFFB2:
 ; ----------------------------------------------------------------------------
         .byte   $00,$00,$00,$00                 ; FFB5 00 00 00 00
 ; ----------------------------------------------------------------------------
-        jmp     LEC72                           ; FFB9 4C 72 EC
+; Saisir un caractère dans A
+XTGET:
+        jmp     _XTGET                          ; FFB9 4C 72 EC
 
 ; ----------------------------------------------------------------------------
 ; Point d'entrée pour l'instruction Hyperbasic 'TINPUT'
-XTINPUT:
-        jmp     TINPUT                          ; FFBC 4C CC EC
+XTINPU:
+        jmp     _XTINPUT                        ; FFBC 4C CC EC
 
 ; ----------------------------------------------------------------------------
 ; Point d'entrée pour l'instruction Hyperbasic 'APLIC'
 XAPLIC:
-        jmp     APLIC                           ; FFBF 4C 45 E0
+        jmp     _XAPLIC                         ; FFBF 4C 45 E0
 
 ; ----------------------------------------------------------------------------
-        jmp     LF2EC                           ; FFC2 4C EC F2
+; Lancer le codage de la page courante avec les paramètres courants
+XTVDTEX:
+        jmp     _XVDTEX                         ; FFC2 4C EC F2
 
 ; ----------------------------------------------------------------------------
 ; Point d'entrée pour l'instruction Hyperbasic 'SERVEUR'
@@ -6180,8 +6186,8 @@ XAPLIC:
 ;        1 -> "Tester le serveur"
 ;        2 -> "Borne de communication"
 ;        3 -> "Tester sans acces disque"
-XSERVEUR:
-        jmp     SERVEUR                         ; FFC5 4C A6 E4
+XSERVE:
+        jmp     _XSERVE                         ; FFC5 4C A6 E4
 
 ; ----------------------------------------------------------------------------
 ROMSIG:

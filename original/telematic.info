@@ -56,12 +56,14 @@ label { addr $0065; size 1; name "MENLX"; comment "Menu: longueur de la barre de
 label { addr $0069; size 2; name "ADMEN"; comment "Menu: table des choix"; };
 
 
-label { addr $00d0; size 16; name "VARAPL"; comment "Pointeurs pour xxx"; };
+label { addr $008c; size 44; name "VARLNG"; comment "Pointeurs pour xxx"; };
+label { addr $00d0; size 44; name "VARAPL"; comment "Pointeurs pour xxx"; };
 
 
 ############################################################
 # Page 01
 ############################################################
+label { addr $0100; size 16; name "BUFTRV"; };
 
 
 ############################################################
@@ -84,7 +86,7 @@ label { addr $0248; size 1; name "FLGSCR"; comment "b7: curseur visible, b6: cur
 label { addr $024c; size 1; name "CURSCR"; comment "Caractère sous le curseur"; };
 label { addr $0275; size 1; name "FLGKBD"; comment "b7: majuscules, b6: bip clavier, b5: ESC=CTRL+T, b2-b1; langue (00: QWERTY, 01: AZERTY, 10: FRENCH), b0:1 gerer les touches de fonctions"; };
 label { addr $0278; size 1; name "KBDSHT"; comment "b7: CTRL, b6: FUNCT, b5: Joystick Gauche, b3: souris, b0; SHIFT"; };
-label { addr $029d; size 7; name "JCKTAB"; comment "Table des valeurs renvoyées par la souris ou le joystick"; }
+label { addr $029d; size 7; name "JCKTAB"; comment "Table des valeurs renvoyées par la souris ou le joystick"; };
 
 label { addr $027e; name "KBDCTC"; comment "b7:1 Ctrl+C"; };
 
@@ -193,7 +195,7 @@ label { addr $BF68; size $0028; name "SCRL25"; comment "Ecran: ligne 25"; };
 ############################################################
 # Cartouche Telematic v2.0b
 ############################################################
-label { addr $e045; name "APLIC"; comment "Instruction Hyperbasic APLIC"; };
+label { addr $e045; name "_XAPLIC"; comment "Instruction Hyperbasic APLIC"; };
 
 
 range { start $e204; end $e22f; type texttable; name "STARTMENU"; };
@@ -238,7 +240,7 @@ range { start $e437; end $e446; type texttable; };
 range { start $e447; end $e44a; type bytetable; name "LE447"; };
 range { start $e44b; end $e4a5; type bytetable; name "LE44B"; };
 
-label { addr $e4a6; name "SERVEUR"; comment "Instruction Hyperbasic SERVEUR"; };
+label { addr $e4a6; name "_XSERVE"; comment "Instruction Hyperbasic SERVEUR"; };
 
 range { start $e62f; end $e644; type texttable; name "LE62F"; };
 range { start $e645; end $e6b1; type texttable; name "LE645"; };
@@ -274,12 +276,15 @@ range { start $e98c; end $e998; type texttable; };
 
 label { addr $e9c7; name "_SERVEUR"; };
 
-label { addr $eccc; name "TINPUT"; comment "Instruction Hyperbasic TINPUT"; };
+label { addr $ec72; name "_XTGET";  comment "Saisir un caractère dans A"; };
+label { addr $eccc; name "_XTINPU"; comment "Instruction Hyperbasic TINPUT"; };
 
 range { start $ed4d; end $ed55; type bytetable; };
 range { start $ed56; end $ede2; type texttable; name "LED56"; };
 
 range { start $f133; end $f138; type bytetable; };
+
+label { addr $f2ec; name "_XVDTEX"; comment "Lancer le codage de la page courante avec les paramètres courants"; };
 
 range { start $f4fc; end $f56a; type texttable; };
 range { start $f6bd; end $f6d4; type texttable; };
@@ -288,9 +293,11 @@ range { start $fd3e; end $fd46; type bytetable; };
 
 range { start $ffb5; end $ffb8; type bytetable; };
 
-label { addr $ffbc; name "XTINPUT"; comment "Point d'entrée pour l'instruction Hyperbasic 'TINPUT'"; };
+label { addr $ffb9; name "XTGET";  comment "Saisir un caractère dans A"; };
+label { addr $ffbc; name "XTINPU"; comment "Point d'entrée pour l'instruction Hyperbasic 'TINPUT'"; };
 label { addr $ffbf; name "XAPLIC"; comment "Point d'entrée pour l'instruction Hyperbasic 'APLIC'"; };
-label { addr $ffc5; name "XSERVEUR"; comment "Point d'entrée pour l'instruction Hyperbasic 'SERVEUR'"; };
+label { addr $ffc2; name "XVDTEX"; comment "Lancer le codage de la page courante avec les paramètres courants"; };
+label { addr $ffc5; name "XSERVE"; comment "Point d'entrée pour l'instruction Hyperbasic 'SERVEUR'"; };
 
 range { start $ffc8; end $fff7; type texttable; name "ROMSIG"; };
 
