@@ -4,22 +4,37 @@
 ; Page:       1
 
 
-        .setcpu "6502"
+.feature string_escapes
+.setcpu "6502"
+
+;----------------------------------------------------------------------
+;			includes cc65
+;----------------------------------------------------------------------
+.feature string_escapes
+
+.include "telestrat.inc"
+
+;----------------------------------------------------------------------
+;			includes SDK
+;----------------------------------------------------------------------
+.include "SDK.mac"
+.include "keyboard.inc"
+.include "macros/SDK-ext.mac"
 
 ; ----------------------------------------------------------------------------
-RES             := $0000
-RESB            := $0002
-DECDEB          := $0004                        ; Paramètres pour décalage
-DECFIN          := $0006                        ; Paramètres pour décalage
-DECCIB          := $0008                        ; Paramètres pour décalage
-TR0             := $000C                        ; Travail, utilisation par HyperBasic à déterminer
-TR1             := $000D                        ; Travail, utilisation par HyperBasic à déterminer
-TR5             := $0011                        ; Travail, utilisation par HyperBasic à déterminer
-TR6             := $0012                        ; Travail, utilisation par HyperBasic à déterminer
-TR7             := $0013                        ; Travail, utilisation par HyperBasic à déterminer
-DEFAFF          := $0014                        ; Caractère à afficher par défaut lors de conversion décimale (justification)
-ADSCR           := $0026                        ; Adresse début de la ligne courante écran
-SCRNB           := $0028                        ; Numéro de la fenêtre courante
+;RES             := $0000
+;RESB            := $0002
+;DECDEB          := $0004                        ; Paramètres pour décalage
+;DECFIN          := $0006                        ; Paramètres pour décalage
+;DECCIB          := $0008                        ; Paramètres pour décalage
+;TR0             := $000C                        ; Travail, utilisation par HyperBasic à déterminer
+;TR1             := $000D                        ; Travail, utilisation par HyperBasic à déterminer
+;TR5             := $0011                        ; Travail, utilisation par HyperBasic à déterminer
+;TR6             := $0012                        ; Travail, utilisation par HyperBasic à déterminer
+;TR7             := $0013                        ; Travail, utilisation par HyperBasic à déterminer
+;DEFAFF          := $0014                        ; Caractère à afficher par défaut lors de conversion décimale (justification)
+;ADSCR           := $0026                        ; Adresse début de la ligne courante écran
+;SCRNB           := $0028                        ; Numéro de la fenêtre courante
 VDTPAR          := $0032                        ; Travail VDT (b7: attribut G0, b6-b4: G0-G1 couleur de fond, b2: G0 soulignage)
 VDTASC          := $0033                        ; Travail VDT (b7: délimiteur, b6: G1 disjoint/non disjoint, b5-b0: motif G1)
 VDTATR          := $0034                        ; Travail VDT (b7: , b6: , b5: , b4: , b3: , b2-b0:)
@@ -31,62 +46,107 @@ VDTGX           := $003A                        ; Position code graphiqe G1: 0-1
 VDTGY           := $003B                        ; Position code graphiqe G1: 0-1 colonne
 FLGVD0          := $003C                        ; b7: séquence en cours, b6: ESC, b4: US, b3: REP, b1-b0: nb caractères de la séquence
 FLGVD1          := $003D                        ; b7: curseur on, b6: mode graphique, b1: mode trace/efface graphique, b0:
-TIMEUS          := $0042                        ; Timer 16 bits utilisateur (secondes)
-TIMEUD          := $0044                        ; Timer 16 bits utilisateur (1/10 secondes)
-HRS1            := $004D                        ; Paramètres pour le travail sur le mode graphique
+;TIMEUS          := $0042                        ; Timer 16 bits utilisateur (secondes)
+;TIMEUD          := $0044                        ; Timer 16 bits utilisateur (1/10 secondes)
+;HRS1            := $004D                        ; Paramètres pour le travail sur le mode graphique
 MEN             := $0060                        ; Menu, travail
 MENDDX          := $0061                        ; Menu: coordonnée du 1er choix (colonne)
-MENDDY          := $0062                        ; Menu: coordonnée du 1er choix (ligne)
+;MENDDY          := $0062                        ; Menu: coordonnée du 1er choix (ligne)
 MENLX           := $0065                        ; Menu: longueur de la barre de choix
-ADMEN           := $0069                        ; Menu: table des choix
-VARAPL          := $00D0                        ; Pointeur pour xxx
-TABDRV          := $0208                        ; Activation des lecteurs
-FLGTEL          := $020D                        ; b7:1-> haute résolution, b6:1-> mode minitel, b5:1-> mode degrés (0->radian), b2:1->BONJOUR.COM existe, b1:1->imprimante CENTRONICS détectée, b0:1-> STRATSED absent
-TIMES           := $0211                        ; Horloge: secondes
-TIMEM           := $0212                        ; Horloge: minutes
-TIMEH           := $0213                        ; Horloge: heures
-SCRX            := $0220                        ; Coordonnée X pour chaque fenêtre
-SCRY            := $0224                        ; Coordonnée Y
-SCRDX           := $0228                        ; Début de la fenêtre
-SCRFX           := $022C                        ; Fin de la fenêtre
-SCRDY           := $0230                        ; Début de la fenêtre
-SCRFY           := $0234                        ; Fin de la fenêtre
-FLGSCR          := $0248                        ; b7: curseur visible, b6: curseur fixe, b5: video inverse, b4: 38 colonnes, b3: prochain code ESC+xx, b2: sequende US en cours, b1: douvle hauteur, b0: compteur US
-CURSCR          := $024C                        ; Caractère sous le curseur
-FLGKBD          := $0275                        ; b7: majuscules, b6: bip clavier, b5: ESC=CTRL+T, b2-b1; langue (00: QWERTY, 01: AZERTY, 10: FRENCH), b0:1 gerer les touches de fonctions
-KBDSHT          := $0278                        ; b7: CTRL, b6: FUNCT, b5: Joystick Gauche, b3: souris, b0; SHIFT
-KBDCTC          := $027E                        ; b7:1 Ctrl+C
-LPRFX           := $0288                        ; Largeur d'impression
-JCKTAB          := $029D                        ; Table des valeurs renvoyées par la souris ou le joystick
-VNMI            := $02F4                        ; Vecteur NMI (n° de banque, adresse)
+;ADMEN           := $0069                        ; Menu: table des choix
+;VARAPL          := $00D0                        ; Pointeur pour xxx
+;TABDRV          := $0208                        ; Activation des lecteurs
+;FLGTEL          := $020D                        ; b7:1-> haute résolution, b6:1-> mode minitel, b5:1-> mode degrés (0->radian), b2:1->BONJOUR.COM existe, b1:1->imprimante CENTRONICS détectée, b0:1-> STRATSED absent
+;TIMES           := $0211                        ; Horloge: secondes
+;TIMEM           := $0212                        ; Horloge: minutes
+;TIMEH           := $0213                        ; Horloge: heures
+;SCRX            := $0220                        ; Coordonnée X pour chaque fenêtre
+;SCRY            := $0224                        ; Coordonnée Y
+;SCRDX           := $0228                        ; Début de la fenêtre
+;SCRFX           := $022C                        ; Fin de la fenêtre
+;SCRDY           := $0230                        ; Début de la fenêtre
+;SCRFY           := $0234                        ; Fin de la fenêtre
+;FLGSCR          := $0248                        ; b7: curseur visible, b6: curseur fixe, b5: video inverse, b4: 38 colonnes, b3: prochain code ESC+xx, b2: sequende US en cours, b1: douvle hauteur, b0: compteur US
+;CURSCR          := $024C                        ; Caractère sous le curseur
+;FLGKBD          := $0275                        ; b7: majuscules, b6: bip clavier, b5: ESC=CTRL+T, b2-b1; langue (00: QWERTY, 01: AZERTY, 10: FRENCH), b0:1 gerer les touches de fonctions
+;KBDSHT          := $0278                        ; b7: CTRL, b6: FUNCT, b5: Joystick Gauche, b3: souris, b0; SHIFT
+;KBDCTC          := $027E                        ; b7:1 Ctrl+C
+;LPRFX           := $0288                        ; Largeur d'impression
+;JCKTAB          := $029D                        ; Table des valeurs renvoyées par la souris ou le joystick
+;VNMI            := $02F4                        ; Vecteur NMI (n° de banque, adresse)
 VIRQ            := $02FA                        ; Vecteur IRQ
-VAPLIC          := $02FD                        ; N° banque, adresse TELEMATIC->LANGAGE
+;VAPLIC          := $02FD                        ; N° banque, adresse TELEMATIC->LANGAGE
 V2DRA           := $0321
-EXBNK           := $040C
-VEXBNK          := $0414
+;EXBNK           := $040C
+;VEXBNK          := $0414
 BNKCID          := $0417
 L0418           := $0418                        ; Pointeur inter banques
-DRIVE           := $0500                        ; N° de lecteur
-ERRNB           := $0512                        ; Erreur Stratsed
-BUFNOM          := $0517                        ; Nom de fichier (drive+nom+extension)
-DESALO          := $052D                        ; Adresse de début du fichier
-FISALO          := $052F                        ; Adresse de fin du fichier
+;DRIVE           := $0500                        ; N° de lecteur
+;ERRNB           := $0512                        ; Erreur Stratsed
+;BUFNOM          := $0517                        ; Nom de fichier (drive+nom+extension)
+;DESALO          := $052D                        ; Adresse de début du fichier
+;FISALO          := $052F                        ; Adresse de fin du fichier
 TAMPFC          := $0542                        ; Adresse de début des tampons fichier (initialisé à DOSBUFFERS par STARTUP)
 BITMFC          := $0544                        ; (word) BitMap des tampons logiques (même convention que la BitMap disquette, 0->occupé, 1->libre))
 FICNUM          := $0548                        ; Numéro logique du fichier (1 ou 2)
 NBFIC           := $0549                        ; Nombre de fichiers autorisés par FILE
-BUFEDT          := $0590                        ; Buffer Editeur de Texte
+;BUFEDT          := $0590                        ; Buffer Editeur de Texte
 BARBRE          := $4000                        ; Buffer arborescence
+
+CODCOU		:= $7fff			; Couleur de fond
 BUFTXT          := $8000                        ; Buffer code VIDEOTEX (3ko maxi)
+CODDX		:= $8000			; Début de la fenêtre (X)
+CODFX		:= $8001			; Fin de la fenêtre (X)
+CODDY		:= $8002			; Début de la fenêter (Y)
+CODFY		:= $8003			; Fin de la denêter (Y)
+CODCX		:= $8004			; Position curseur (X)
+CODCY		:= $8005			; Position curseur (Y)
+FLGCOD		:= $8006			; Flags de la page:
+						; b7: effacement de la page
+						; b6: affichage du curseur
+						; b5: masquage / démasquage
+						; b4: codage acordéon
+						; b3: inversion du sens
+						; b2: codage colonne
+						; b1: sens Y négatif
+						; b0: sens X négatif
+BUFfVDT		:= $8007			; Début des codes Videotex (terminé par un 0)
+
 BVDTAS          := $9000                        ; Buffer attributs VDT
 BVDTAT          := $9400                        ; Buffer couleur VDT
 VDTDES          := $9C00                        ; Travail et conversion G2
 TABDBH          := $9C80                        ; Buffer double hauteur VIDEOTEX (taille inconnue)
 PAGE            := $9CC0                        ; Buffer pour le nom de la page actuelle (variable PAGE$ basic)
 SCRL25          := $BF68                        ; Ecran: ligne 25
+SCRL27		:= $bfb8			; Ecran: ligne 27 (statut)
 
 ; ----------------------------------------------------------------------------
-#define XRSSBU $18
+XMDE = $82					; Minitel entrée
+XLPR = $8e					; Imprimante sortie
+XMDS = $8f					; Minitel sortie
+XVDT = $91					; Videotex
+
+XRSSBU := $18
+
+
+; $A0: [ENVOI]
+; $A1: [RETOUR]
+; $A2: [REPETITION]
+; $A3: [GUIDE]
+; $A5: [SOMMAIRE]
+; $A7: [SUITE]
+; $A9: * [RETOUR]
+
+MNTL_ENVOI = $a0
+MNTL_RETOUR = $a1
+MNTL_REPETITION = $a2
+MNTL_GUIDE = $a3
+MNTL_ANNULATION = $a4
+MNTL_SOMMAIRE = $a5
+MNTL_CORRECTION = $a6
+MNTL_SUITE = $a7
+MNTL_CNXFI = $a8
+
 
 ; ----------------------------------------------------------------------------
 LE000:
@@ -94,8 +154,8 @@ LE000:
         lda     V2DRA                           ; E000 AD 21 03
         and     #$07                            ; E003 29 07
         sta     VNMI                            ; E005 8D F4 02
-        lda     #$2D                            ; E008 A9 2D
-        ldy     #$E0                            ; E00A A0 E0
+        lda     #<LE02D                         ; E008 A9 2D
+        ldy     #>LE02D                         ; E00A A0 E0
         sta     VNMI+1                          ; E00C 8D F5 02
         sty     VNMI+2                          ; E00F 8C F6 02
 
@@ -124,15 +184,16 @@ LE02A:
         ; Initialise le lecteur par défaut et le nom du fichier
         jsr     LE08D                           ; E02A 20 8D E0
 
-        lda     #$30                            ; E02D A9 30
-        ldy     #$E2                            ; E02F A0 E2
+LE02D:
+        lda     #<MENU1                         ; E02D A9 30
+        ldy     #>MENU1                         ; E02F A0 E2
         _XWSTR0                                 ; E031 00 14
 
         ldx     #$00                            ; E033 A2 00
         _XCOSCR                                 ; E035 00 34
 
-        lda     #$72                            ; E037 A9 72
-        ldy     #$E2                            ; E039 A0 E2
+        lda     #<LE272                         ; E037 A9 72
+        ldy     #>LE272                         ; E039 A0 E2
         jsr     LE1E9                           ; E03B 20 E9 E1
 
         jsr     LE062                           ; E03E 20 62 E0
@@ -171,8 +232,9 @@ _XAPLIC:
         dex                                     ; E057 CA
         jsr     LE062                           ; E058 20 62 E0
 
-        lda     #$47                            ; E05B A9 47
-        ldy     #$E4                            ; E05D A0 E4
+	; Codes pour placer le curseur en ligne 14, colonne 0
+        lda     #<LE447                         ; E05B A9 47
+        ldy     #>LE447                         ; E05D A0 E4
         _XWSTR0                                 ; E05F 00 14
         rts                                     ; E061 60
 
@@ -211,8 +273,8 @@ LE078:
 
         ; Adresse: $C000
         sta     BNKCID                          ; E07A 8D 17 04
-        lda     #$00                            ; E07D A9 00
-        ldy     #$C0                            ; E07F A0 C0
+        lda     #<$C000                         ; E07D A9 00
+        ldy     #>$C000                         ; E07F A0 C0
         sta     VEXBNK+1                        ; E081 8D 15 04
         sty     VEXBNK+2                        ; E084 8C 16 04
         jmp     EXBNK                           ; E087 4C 0C 04
@@ -231,14 +293,14 @@ LE08D:
 
         ; Initialise le nom de fichier: '         '
         ldx     #$09                            ; E092 A2 09
-        lda     #$20                            ; E094 A9 20
+        lda     #' '                            ; E094 A9 20
 LE096:
         sta     BUFNOM,x                        ; E096 9D 17 05
         dex                                     ; E099 CA
         bne     LE096                           ; E09A D0 FA
 
         ; /?\ ??? Un programme Hyperbasic peut aller
-        ; jusqu'en BARBREd'apès la doc
+        ; jusqu'en BARBRE d'apès la doc
         stx     $3500                           ; E09C 8E 00 35
         stx     $3501                           ; E09F 8E 01 35
 
@@ -249,17 +311,17 @@ LE096:
 ; ----------------------------------------------------------------------------
 ; APLIC 2: Edition de pages VIDEOTEX
 LE0A6:
-        lda     #$C1                            ; E0A6 A9 C1
-        ldy     #$E3                            ; E0A8 A0 E3
+        lda     #<MENU_EDITVDT                  ; E0A6 A9 C1
+        ldy     #>MENU_EDITVDT                  ; E0A8 A0 E3
         _XWSTR0                                 ; E0AA 00 14
 
         ; "Edition PAGES VIDEOTEX"
-        lda     #$84                            ; E0AC A9 84
-        ldy     #$E2                            ; E0AE A0 E2
+        lda     #<LE284                         ; E0AC A9 84
+        ldy     #>LE284                         ; E0AE A0 E2
         _XWSTR0                                 ; E0B0 00 14
 
-        lda     #$CA                            ; E0B2 A9 CA
-        ldy     #$E3                            ; E0B4 A0 E3
+        lda     #<MENU_EDITSRV                  ; E0B2 A9 CA
+        ldy     #>MENU_EDITSRV                  ; E0B4 A0 E3
         jsr     LE1E3                           ; E0B6 20 E3 E1
 
         cmp     #KEY_ESC                        ; E0B9 C9 1B
@@ -296,17 +358,17 @@ LE0CB:
 ; ----------------------------------------------------------------------------
 ; APLIC 1: Emulation Minitel
 LE0D1:
-        lda     #$0F                            ; E0D1 A9 0F
-        ldy     #$E4                            ; E0D3 A0 E4
+        lda     #<LE40F                         ; E0D1 A9 0F
+        ldy     #>LE40F                         ; E0D3 A0 E4
         _XWSTR0                                 ; E0D5 00 14
 
         ; "Emulation MINITEL"
-        lda     #$72                            ; E0D7 A9 72
-        ldy     #$E2                            ; E0D9 A0 E2
+        lda     #<LE272                         ; E0D7 A9 72
+        ldy     #>LE272                         ; E0D9 A0 E2
         _XWSTR0                                 ; E0DB 00 14
 
-        lda     #$18                            ; E0DD A9 18
-        ldy     #$E4                            ; E0DF A0 E4
+        lda     #<MENU_EMUL                     ; E0DD A9 18
+        ldy     #>MENU_EMUL                     ; E0DF A0 E4
         jsr     LE1E3                           ; E0E1 20 E3 E1
 
         cmp     #KEY_ESC                        ; E0E4 C9 1B
@@ -337,17 +399,18 @@ LE0F6:
 ; ----------------------------------------------------------------------------
 ; APLIC 4: Lancement du serveur
 LE0FC:
-        lda     #$D1                            ; E0FC A9 D1
-        ldy     #$E2                            ; E0FE A0 E2
+        lda     #<LE2D1                         ; E0FC A9 D1
+        ldy     #>LE2D1                         ; E0FE A0 E2
         _XWSTR0                                 ; E100 00 14
 
         ; "Lancer le SERVEUR"
-        lda     #$AB                            ; E102 A9 AB
-        ldy     #$E2                            ; E104 A0 E2
+        lda     #<LE2AB                         ; E102 A9 AB
+        ldy     #>LE2AB                         ; E104 A0 E2
         _XWSTR0                                 ; E106 00 14
 
-        lda     #$DA                            ; E108 A9 DA
-        ldy     #$E2                            ; E10A A0 E2
+	; "Acces disque"
+        lda     #<LE2DA                         ; E108 A9 DA
+        ldy     #>LE2DA                         ; E10A A0 E2
         jsr     LE1E3                           ; E10C 20 E3 E1
 
         cmp     #KEY_ESC                        ; E10F C9 1B
@@ -386,8 +449,8 @@ LE130:
 ; ----------------------------------------------------------------------------
 LE131:
         ; "PAGES VIDEOTEX"
-        lda     #$00                            ; E131 A9 00
-        ldy     #$E4                            ; E133 A0 E4
+        lda     #<VDT_NAME                      ; E131 A9 00
+        ldy     #>VDT_NAME                      ; E133 A0 E4
         sta     $F6                             ; E135 85 F6
         sty     $F7                             ; E137 84 F7
 
@@ -406,23 +469,24 @@ LE13B:
 LE147:
         ; Redéfinition de caractères
         ; Table en LE44B
-        lda     #$4B                            ; E147 A9 4B
-        ldy     #$E4                            ; E149 A0 E4
+        lda     #<LE44B                         ; E147 A9 4B
+        ldy     #>LE44B                         ; E149 A0 E4
         _XSCRNE                                 ; E14B 00 39
 
 LE14D:
         ;
-        lda     #$4B                            ; E14D A9 4B
-        ldy     #$E3                            ; E14F A0 E3
+        lda     #<LE34B                         ; E14D A9 4B
+        ldy     #>LE34B                         ; E14F A0 E3
         _XWSTR0                                 ; E151 00 14
 
         ; 'Edition SERVEUR'
-        lda     #$9B                            ; E153 A9 9B
-        ldy     #$E2                            ; E155 A0 E2
+        lda     #<LE29B                         ; E153 A9 9B
+        ldy     #>LE29B                         ; E155 A0 E2
         _XWSTR0                                 ; E157 00 14
 
-        lda     #$5B                            ; E159 A9 5B
-        ldy     #$E3                            ; E15B A0 E3
+	; "acces disque"
+        lda     #<LE35B                         ; E159 A9 5B
+        ldy     #>LE35B                         ; E15B A0 E3
         jsr     LE1E3                           ; E15D 20 E3 E1
 
         cmp     #KEY_ESC                        ; E160 C9 1B
@@ -457,8 +521,8 @@ LE179:
 ; ----------------------------------------------------------------------------
 LE17F:
         ; "SERVEUR"
-        lda     #$B9                            ; E17F A9 B9
-        ldy     #$E3                            ; E181 A0 E3
+        lda     #<SRV_NAME                      ; E17F A9 B9
+        ldy     #>SRV_NAME                      ; E181 A0 E3
         sta     $F6                             ; E183 85 F6
         sty     $F7                             ; E185 84 F7
 
@@ -530,8 +594,8 @@ LE1C8:
         jsr     LE1DA                           ; E1CC 20 DA E1
 
         ; " pages"
-        lda     #$54                            ; E1CF A9 54
-        ldy     #$E3                            ; E1D1 A0 E3
+        lda     #<LE354                         ; E1CF A9 54
+        ldy     #>LE354                         ; E1D1 A0 E3
         _XWSTR0                                 ; E1D3 00 14
 
         ; Attend une touche
@@ -791,8 +855,8 @@ LE4A9:
         sta     BUFNOM                          ; E4AD 8D 17 05
 
         ; "ACCES DISQUE:"
-        lda     #$2F                            ; E4B0 A9 2F
-        ldy     #$E6                            ; E4B2 A0 E6
+        lda     #<LE62F                         ; E4B0 A9 2F
+        ldy     #>LE62F                         ; E4B2 A0 E6
         _XWSTR0                                 ; E4B4 00 14
 
         ; Affiche le type d'accès ("PAGES VIDEOTEX",...)
@@ -801,8 +865,8 @@ LE4A9:
         _XWSTR0                                 ; E4BA 00 14
 
         ; Affiche les différentes options possibles
-        lda     #$45                            ; E4BC A9 45
-        ldy     #$E6                            ; E4BE A0 E6
+        lda     #<LE645                         ; E4BC A9 45
+        ldy     #>LE645                         ; E4BE A0 E6
         _XWSTR0                                 ; E4C0 00 14
 
         ; Affiche "Nom courant:"+nom actuel du fichier
@@ -893,8 +957,8 @@ LE510:
         bne     LE510                           ; E514 D0 FA
 
         ; Affiche "Nom courant:" en ligne 5, colonne 1
-        lda     #$B2                            ; E516 A9 B2
-        ldy     #$E6                            ; E518 A0 E6
+        lda     #<LE6B2                         ; E516 A9 B2
+        ldy     #>LE6B2                         ; E518 A0 E6
         _XWSTR0                                 ; E51A 00 14
 
         ldx     #$00                            ; E51C A2 00
@@ -902,7 +966,7 @@ LE51E:
         ; Attend une touche
         _XRDW0                                  ; E51E 00 0C
 
-        : [DELETE]?
+        ; [DELETE]?
         cmp     #KEY_DEL                        ; E520 C9 7F
         bne     LE52F                           ; E522 D0 0B
 
@@ -1027,7 +1091,7 @@ LE585:
         bne     LE5CA                           ; E58F D0 39
 
         lda     #$00                            ; E591 A9 00
-        sta     FLGSRC                          ; E593 8D 48 02
+        sta     FLGSCR                          ; E593 8D 48 02
 
         ldx     #$0B                            ; E596 A2 0B
         lda     #$00                            ; E598 A9 00
@@ -1074,8 +1138,8 @@ LE5CA:
 ; Affiche "Nom courant:"+nom actuel du fichier
 LE5CD:
         ; Affiche "Nom courant:" en ligne 5, colonne 1
-        lda     #$B2                            ; E5CD A9 B2
-        ldy     #$E6                            ; E5CF A0 E6
+        lda     #<LE6B2                         ; E5CD A9 B2
+        ldy     #>LE6B2                         ; E5CF A0 E6
         _XWSTR0                                 ; E5D1 00 14
 
         ; Affiche le nom actuel du fichier
@@ -1107,8 +1171,8 @@ LE5E2:
         pha                                     ; E5E2 48
 
         ; Positionne le curseur en ligne 23, colonne 1
-        lda     #$DC                            ; E5E3 A9 DC
-        ldy     #$E6                            ; E5E5 A0 E6
+        lda     #<LE6DC                         ; E5E3 A9 DC
+        ldy     #>LE6DC                         ; E5E5 A0 E6
         _XWSTR0                                 ; E5E7 00 14
 
         pla                                     ; E5E9 68
@@ -1144,16 +1208,16 @@ LE5EC:
         bcs     LE608                           ; E5F8 B0 0E
 
         ; Affiche "STRATSED absent!" en ligne 0, colonne 1
-        lda     #$C3                            ; E5FA A9 C3
-        ldy     #$E6                            ; E5FC A0 E6
+        lda     #<LE6C3                         ; E5FA A9 C3
+        ldy     #>LE6C3                         ; E5FC A0 E6
         _XWSTR0                                 ; E5FE 00 14
 
         ; Attend l'appui sur une touche
         _XRDW0                                  ; E600 00 0C
 
         ; Efface la ligne suivante
-        lda     #$D8                            ; E602 A9 D8
-        ldy     #$E6                            ; E604 A0 E6
+        lda     #<LE6D8                         ; E602 A9 D8
+        ldy     #>LE6D8                         ; E604 A0 E6
         _XWSTR0                                 ; E606 00 14
 
 LE608:
@@ -1305,7 +1369,9 @@ LE762:
         .byte   $22,$00                         ; E778 22 00
 
 LE77A:
-        .byte   $22,$0D,$0A                     ; E77A 22 0D 0A
+        .byte   $22                             ; E77A 22
+LE77B:
+        .byte   $0D,$0A                         ; E77B 0D 0A
         .byte   ">"                             ; E77D 3E
         .byte   $00                             ; E77E 00
 
@@ -1316,7 +1382,9 @@ LE77F:
         .byte   $00                             ; E78B 00
 
 LE78C:
-        .byte   $07,$1F                         ; E78C 07 1F
+        .byte   $07                             ; E78C 07
+LE78D:
+        .byte   $1F                             ; E78D 1F
         .byte   "@A "                           ; E78E 40 41 20
         .byte   $18,$00                         ; E791 18 00
 
@@ -1395,6 +1463,7 @@ LE864:
         .byte   $00,$21,$2C,$37,$3E,$4B,$6B,$7C ; E864 00 21 2C 37 3E 4B 6B 7C
         .byte   $8F,$AD                         ; E86C 8F AD
 ; ----------------------------------------------------------------------------
+; Envoie PRO1 (ESC+9) vers le minitel
 LE86E:
         jsr     LE874                           ; E86E 20 74 E8
 
@@ -1403,6 +1472,7 @@ LE86E:
         .byte   $2C                             ; E873 2C
 
 LE874:
+	; Envoie ESC vers le minitel
         lda     #$1B                            ; E874 A9 1B
         ; Masque l'instruction suivante
         .byte   $2C                             ; E876 2C
@@ -1419,8 +1489,8 @@ LE87C:
         tya                                     ; E87C 98
         pha                                     ; E87D 48
 
-        lda     #$93                            ; E87E A9 93
-        ldy     #$E7                            ; E880 A0 E7
+        lda     #<LE793                         ; E87E A9 93
+        ldy     #>LE793                         ; E880 A0 E7
         _XWSTR0                                 ; E882 00 14
 
         .byte   $2C                             ; E884 2C
@@ -1428,8 +1498,8 @@ LE885:
         tya                                     ; E885 98
         pha                                     ; E886 48
 
-        lda     #$93                            ; E887 A9 93
-        ldy     #$E7                            ; E889 A0 E7
+        lda     #<LE793                         ; E887 A9 93
+        ldy     #>LE793                         ; E889 A0 E7
         _XWSTR1                                 ; E88B 00 15
 
         pla                                     ; E88D 68
@@ -1448,8 +1518,8 @@ LE890:
 
         ; Place le curseur en ligne 0, colonne 1
         ; et efface la ligne
-        lda     #$8D                            ; E89E A9 8D
-        ldy     #$E7                            ; E8A0 A0 E7
+        lda     #<LE78D                         ; E89E A9 8D
+        ldy     #>LE78D                         ; E8A0 A0 E7
         _XWSTR1                                 ; E8A2 00 15
 
         lda     #<(BUFTXT+7)                    ; E8A4 A9 07
@@ -1564,8 +1634,8 @@ LE922:
 LE927:
          ; Table des mot-cles
         ; RESB := BARBRE
-        lda     #$00                            ; E927 A9 00
-        ldy     #$40                            ; E929 A0 40
+        lda     #<BARBRE                        ; E927 A9 00
+        ldy     #>BARBRE                        ; E929 A0 40
         sta     RESB                            ; E92B 85 02
         sty     RESB+1                          ; E92D 84 03
 
@@ -1628,8 +1698,8 @@ LE963:
 
         ; Efface l'écran et affiche "Mot cle:"
         ; en ligne 19 colonne 1
-        lda     #$7F                            ; E969 A9 7F
-        ldy     #$E7                            ; E96B A0 E7
+        lda     #<LE77F                         ; E969 A9 7F
+        ldy     #>LE77F                         ; E96B A0 E7
         _XWSTR1                                 ; E96D 00 15
 
         ; Affiche 7 caractères
@@ -1787,8 +1857,8 @@ LEA0D:
         bvs     LE9F9                           ; EA19 70 DE
 
         ; "Attente de communication"
-        lda     #$0C                            ; EA1B A9 0C
-        ldy     #$E7                            ; EA1D A0 E7
+        lda     #<LE70C                         ; EA1B A9 0C
+        ldy     #>LE70C                         ; EA1D A0 E7
         _XWSTR0                                 ; EA1F 00 14
 
 LEA21:
@@ -1872,8 +1942,8 @@ LEA7E:
         _XLIGNE                                 ; EA7E 00 64
 
         ; "Attente du correspondant"
-        lda     #$3C                            ; EA80 A9 3C
-        ldy     #$E7                            ; EA82 A0 E7
+        lda     #<LE73C                         ; EA80 A9 3C
+        ldy     #>LE73C                         ; EA82 A0 E7
         _XWSTR0                                 ; EA84 00 14
 
         _XSCXFI                                 ; EA86 00 63
@@ -1885,12 +1955,13 @@ LEA7E:
 ; ----------------------------------------------------------------------------
 LEA8F:
         ; "Debut d'emission"
-        lda     #$28                            ; EA8F A9 28
-        ldy     #$E7                            ; EA91 A0 E7
+        lda     #<LE728                         ; EA8F A9 28
+        ldy     #>LE728                         ; EA91 A0 E7
         _XWSTR0                                 ; EA93 00 14
 
-        lda     #$E0                            ; EA95 A9 E0
-        ldy     #$E6                            ; EA97 A0 E6
+	; "serveur TELESTRAT (c)  ORIC"
+        lda     #<LE6E0                         ; EA95 A9 E0
+        ldy     #>LE6E0                         ; EA97 A0 E6
         _XWSTR1                                 ; EA99 00 15
 
         ; Attente de 30 dixième de secondes
@@ -1908,8 +1979,8 @@ LEAA6:
         sta     $E7                             ; EAA8 85 E7
 
         ; "Emission de la page"
-        lda     #$62                            ; EAAA A9 62
-        ldy     #$E7                            ; EAAC A0 E7
+        lda     #<LE762                         ; EAAA A9 62
+        ldy     #>LE762                         ; EAAC A0 E7
         _XWSTR0                                 ; EAAE 00 14
 
         ldx     $E6                             ; EAB0 A6 E6
@@ -1935,8 +2006,8 @@ LEAB9:
         sta     TAMPFC                          ; EACE 8D 42 05
         sty     TAMPFC+1                        ; EAD1 8C 43 05
 
-        lda     #$7A                            ; EAD4 A9 7A
-        ldy     #$E7                            ; EAD6 A0 E7
+        lda     #<LE77A                         ; EAD4 A9 7A
+        ldy     #>LE77A                         ; EAD6 A0 E7
         _XWSTR0                                 ; EAD8 00 14
 
         lda     $9CCC                           ; EADA AD CC 9C
@@ -2168,8 +2239,8 @@ LEBFB:
 
         ; Positionne le curseur en Y=0, X=1
         ; Affiche ' ' et efface le reste de la ligne
-        lda     #$8C                            ; EBFF A9 8C
-        ldy     #$E7                            ; EC01 A0 E7
+        lda     #<LE78C                         ; EBFF A9 8C
+        ldy     #>LE78C                         ; EC01 A0 E7
         _XWSTR1                                 ; EC03 00 15
 
         ; TR7 == 0?
@@ -2184,8 +2255,8 @@ LEBFB:
         ;
         ; Affiche le message XY sur le canal 0 et le message AY sur le canal 1
         ; AY := 'touche '
-        lda     #$51                            ; EC0D A9 51
-        ldy     #$E8                            ; EC0F A0 E8
+        lda     #<LE851                         ; EC0D A9 51
+        ldy     #>LE851                         ; EC0F A0 E8
         jsr     LEC5B                           ; EC11 20 5B EC
 
         sec                                     ; EC14 38
@@ -2201,8 +2272,8 @@ LEC16:
         clc                                     ; EC18 18
 
         ; AY := 'communication coupee dans 30 sec'
-        lda     #$97                            ; EC19 A9 97
-        ldy     #$E7                            ; EC1B A0 E7
+        lda     #<LE797                         ; EC19 A9 97
+        ldy     #>LE797                         ; EC1B A0 E7
 
         ; Calcule l'adresse du message
         ldx     TR7                             ; EC1D A6 13
@@ -2222,8 +2293,8 @@ LEC25:
 
         ; Affiche le message XY sur le canal 0 et le message AY sur le canal 1
         ; AY := " interdite"
-        lda     #$59                            ; EC2F A9 59
-        ldy     #$E8                            ; EC31 A0 E8
+        lda     #<LE859                         ; EC2F A9 59
+        ldy     #>LE859                         ; EC31 A0 E8
         jsr     LEC5B                           ; EC33 20 5B EC
 
 LEC36:
@@ -2231,8 +2302,8 @@ LEC36:
         _XWR1                                   ; EC38 00 11
 
         ; Passe à la ligne suivanet et affiche '>'
-        lda     #$7B                            ; EC3A A9 7B
-        ldy     #$E7                            ; EC3C A0 E7
+        lda     #<LE77B                         ; EC3A A9 7B
+        ldy     #>LE77B                         ; EC3C A0 E7
         _XWSTR0                                 ; EC3E 00 14
 
         ; TR7 < 3?
@@ -2298,7 +2369,7 @@ LEC68:
 
 ; ----------------------------------------------------------------------------
 ; Saisir un caractère dans A
-_XTTGET:
+_XTGET:
         ; Timeout := 120 secondes
         ldx     #$78                            ; EC72 A2 78
         stx     TIMEUS                          ; EC74 86 42
@@ -2407,7 +2478,7 @@ LECC4:
 ; Instruction Hyperbasic TINPUT
 _XTINPUT:
         ; Récupère la longueur de la saisie
-        ldx     FACC1E                          ; ECCC A6 60
+        ldx     ACC1E                           ; ECCC A6 60
 
         jsr     LECDC                           ; ECCE 20 DC EC
 
@@ -2422,9 +2493,9 @@ _XTINPUT:
         sta     $FF                             ; ECD1 85 FF
 
         ldy     #<BUFEDT                        ; ECD3 A0 90
-        sty     FACC1M                          ; ECD5 84 61
+        sty     ACC1M                           ; ECD5 84 61
         ldy     #>BUFEDT                        ; ECD7 A0 05
-        sty     FACC1M+1                        ; ECD9 84 62
+        sty     ACC1M+1                         ; ECD9 84 62
         rts                                     ; ECDB 60
 
 ; ----------------------------------------------------------------------------
@@ -2613,15 +2684,15 @@ LEDBA:
         .byte   "C E "                          ; EDDF 43 20 45 20
 ; ----------------------------------------------------------------------------
 LEDE3:
-        lda     #$07                            ; EDE3 A9 07
-        ldy     #$80                            ; EDE5 A0 80
+        lda     #<(BUFTXT+7)                    ; EDE3 A9 07
+        ldy     #>(BUFTXT+7)                    ; EDE5 A0 80
         _XWSTR1                                 ; EDE7 00 15
         rts                                     ; EDE9 60
 
 ; ----------------------------------------------------------------------------
 LEDEA:
-        lda     #$07                            ; EDEA A9 07
-        ldy     #$80                            ; EDEC A0 80
+        lda     #<(BUFTXT+7)                    ; EDEA A9 07
+        ldy     #>(BUFTXT+7)                    ; EDEC A0 80
         _XWSTR2                                 ; EDEE 00 16
         rts                                     ; EDF0 60
 
@@ -2709,42 +2780,54 @@ LEE61:
         jmp     LEEBD                           ; EE6C 4C BD EE
 
 ; ----------------------------------------------------------------------------
+; Mise à jour de la ligne de statut (ligne 27)
+;
+; "Debut:00,00 Fin:00,00 Curseur:00,00 C E "
 LEE6F:
         ldx     #$27                            ; EE6F A2 27
 LEE71:
         lda     LEDBA,x                         ; EE71 BD BA ED
-        sta     $BFB8,x                         ; EE74 9D B8 BF
+        sta     SCRL27,x                        ; EE74 9D B8 BF
         dex                                     ; EE77 CA
         bpl     LEE71                           ; EE78 10 F7
 
-        bit     BUFTXT+6                        ; EE7A 2C 06 80
+	; Effacement de la page?
+        bit     FLGCOD                          ; EE7A 2C 06 80
         bpl     LEE84                           ; EE7D 10 05
 
-        lda     #$C5                            ; EE7F A9 C5
-        sta     $BFDF                           ; EE81 8D DF BF
+        lda     #'E'+$80                        ; EE7F A9 C5
+        sta     SCRL27+39                       ; EE81 8D DF BF
+
 LEE84:
+	; Affichage du curseur?
         bvc     LEE8B                           ; EE84 50 05
 
-        lda     #$C3                            ; EE86 A9 C3
-        sta     $BFDD                           ; EE88 8D DD BF
+        lda     #'C'+$80                        ; EE86 A9 C3
+        sta     SCRL27+37                       ; EE88 8D DD BF
+
 LEE8B:
-        ldy     #$D7                            ; EE8B A0 D7
-        lda     BUFTXT+4                        ; EE8D AD 04 80
+        ldy     #<(SCRL27+31)                   ; EE8B A0 D7
+        lda     CODCX                           ; EE8D AD 04 80
         jsr     LEEBA                           ; EE90 20 BA EE
-        ldy     #$DA                            ; EE93 A0 DA
-        lda     BUFTXT+5                        ; EE95 AD 05 80
+
+        ldy     #<(SCRL27+34)                   ; EE93 A0 DA
+        lda     CODCY                           ; EE95 AD 05 80
         jsr     LEEBD                           ; EE98 20 BD EE
-        ldy     #$BF                            ; EE9B A0 BF
-        lda     BUFTXT                          ; EE9D AD 00 80
+
+        ldy     #<(SCRL27+7)                    ; EE9B A0 BF
+        lda     CODDX                           ; EE9D AD 00 80
         jsr     LEEBA                           ; EEA0 20 BA EE
-        ldy     #$C2                            ; EEA3 A0 C2
-        lda     BUFTXT+2                        ; EEA5 AD 02 80
+
+        ldy     #<(SCRL27+10)                   ; EEA3 A0 C2
+        lda     CODDY                           ; EEA5 AD 02 80
         jsr     LEEBD                           ; EEA8 20 BD EE
-        ldy     #$C9                            ; EEAB A0 C9
-        lda     BUFTXT+1                        ; EEAD AD 01 80
+
+        ldy     #<(SCRL27+17)                   ; EEAB A0 C9
+        lda     CODFX                           ; EEAD AD 01 80
         jsr     LEEBA                           ; EEB0 20 BA EE
-        ldy     #$CC                            ; EEB3 A0 CC
-        lda     BUFTXT+3                        ; EEB5 AD 03 80
+
+        ldy     #<(SCRL27+20)                   ; EEB3 A0 CC
+        lda     CODFY                           ; EEB5 AD 03 80
         bne     LEEBD                           ; EEB8 D0 03
 
 LEEBA:
@@ -2752,9 +2835,9 @@ LEEBA:
         adc     #$01                            ; EEBB 69 01
 LEEBD:
         sty     TR5                             ; EEBD 84 11
-        ldy     #$BF                            ; EEBF A0 BF
+        ldy     #>SCRL27                        ; EEBF A0 BF
         sty     TR6                             ; EEC1 84 12
-        ldy     #$30                            ; EEC3 A0 30
+        ldy     #'0'                            ; EEC3 A0 30
         sty     DEFAFF                          ; EEC5 84 14
         ldx     #$00                            ; EEC7 A2 00
         ldy     #$00                            ; EEC9 A0 00
@@ -2762,10 +2845,10 @@ LEEBD:
         rts                                     ; EECD 60
 
 ; ----------------------------------------------------------------------------
-        cmp     #$61                            ; EECE C9 61
+        cmp     #'a'                            ; EECE C9 61
         bcc     LEED8                           ; EED0 90 06
 
-        cmp     #$7B                            ; EED2 C9 7B
+        cmp     #'z'+1                          ; EED2 C9 7B
         bcs     LEED8                           ; EED4 B0 02
 
         sbc     #$1F                            ; EED6 E9 1F
@@ -2784,8 +2867,8 @@ LEED9:
         beq     LEF16                           ; EEDA F0 3A
 
         ; "validation (O/N):"
-        lda     #$56                            ; EEDC A9 56
-        ldy     #$ED                            ; EEDE A0 ED
+        lda     #<LED56                         ; EEDC A9 56
+        ldy     #>LED56                         ; EEDE A0 ED
         _XWSTR0                                 ; EEE0 00 14
 
         ; Attend l'appui sur une touche
@@ -2797,28 +2880,29 @@ LEED9:
 LEEE8:
         lda     #$00                            ; EEE8 A9 00
         sta     BUFTXT+8                        ; EEEA 8D 08 80
-        sta     BUFTXT+4                        ; EEED 8D 04 80
+        sta     CODCX                           ; EEED 8D 04 80
 
         jsr     LF2CF                           ; EEF0 20 CF F2
 
         lda     #$01                            ; EEF3 A9 01
-        sta     BUFTXT+5                        ; EEF5 8D 05 80
+        sta     CODCY                           ; EEF5 8D 05 80
 
         ; DESALO := BUFTXT
-        lda     #$00                            ; EEF8 A9 00
-        ldy     #$80                            ; EEFA A0 80
+        lda     #<BUFTXT                        ; EEF8 A9 00
+        ldy     #>BUFTXT                        ; EEFA A0 80
         sta     DESALO                          ; EEFC 8D 2D 05
         sty     DESALO+1                        ; EEFF 8C 2E 05
 
         ; FISALO := BUFTXT+8
-        lda     #$08                            ; EF02 A9 08
-        ldy     #$80                            ; EF04 A0 80
+        lda     #<(BUFTXT+8)                    ; EF02 A9 08
+        ldy     #>(BUFTXT+8)                    ; EF04 A0 80
         sta     FISALO                          ; EF06 8D 2F 05
         sty     FISALO+1                        ; EF09 8C 30 05
 LEF0C:
         rts                                     ; EF0C 60
 
 ; ----------------------------------------------------------------------------
+; Sortie écran Videotex sur le canal 2 et minitel sur le canal 1
 LEF0D:
         lda     #XVDT                           ; EF0D A9 91
         _XOP2                                   ; EF0F 00 02
@@ -2828,7 +2912,9 @@ LEF0D:
         rts                                     ; EF15 60
 
 ; ----------------------------------------------------------------------------
+; Edition d'une page
 LEF16:
+	; Sortie Videotex (canal 2) et Minitel (canal 1)
         jsr     LEF0D                           ; EF16 20 0D EF
 
         ldx     #$00                            ; EF19 A2 00
@@ -2903,47 +2989,53 @@ LEF6B:
 LEF74:
         tax                                     ; EF74 AA
 
+	; Coordonnées X,Y mode Videotex
         lda     VDTX                            ; EF75 A5 38
         ldy     VDTY                            ; EF77 A4 39
 
+	; Définition du début de la fenêtre
         cpx     #KEY_FUNCT_D                    ; EF79 E0 84
         beq     LEFA4                           ; EF7B F0 27
 
+	; Définition de la fin de la fenêtre
         cpx     #KEY_FUNCT_F                    ; EF7D E0 86
         beq     LEFAC                           ; EF7F F0 2B
 
+	; Définition de la position du curseur
         cpx     #KEY_FUNCT_O                    ; EF81 E0 8F
         beq     LEF9C                           ; EF83 F0 17
 
+	; Bascule effacement de la page
         lda     #$80                            ; EF85 A9 80
         cpx     #KEY_FUNCT_E                    ; EF87 E0 85
         beq     LEF90                           ; EF89 F0 05
 
+	; Bascule affichage du curseur
         lsr     a                               ; EF8B 4A
         cpx     #KEY_FUNCT_P                    ; EF8C E0 90
         bne     LEFB4                           ; EF8E D0 24
 
 LEF90:
-        eor     BUFTXT+6                        ; EF90 4D 06 80
-        sta     BUFTXT+6                        ; EF93 8D 06 80
+        eor     FLGCOD                          ; EF90 4D 06 80
+        sta     FLGCOD                          ; EF93 8D 06 80
 LEF96:
         jsr     LEE6F                           ; EF96 20 6F EE
         jmp     LEF38                           ; EF99 4C 38 EF
 
 ; ----------------------------------------------------------------------------
 LEF9C:
-        sta     BUFTXT+4                        ; EF9C 8D 04 80
-        sty     BUFTXT+5                        ; EF9F 8C 05 80
+        sta     CODCX                           ; EF9C 8D 04 80
+        sty     CODCY                           ; EF9F 8C 05 80
         beq     LEF96                           ; EFA2 F0 F2
 
 LEFA4:
-        sta     BUFTXT                          ; EFA4 8D 00 80
-        sty     BUFTXT+2                        ; EFA7 8C 02 80
+        sta     CODDX                           ; EFA4 8D 00 80
+        sty     CODDY                           ; EFA7 8C 02 80
         beq     LEF96                           ; EFAA F0 EA
 
 LEFAC:
-        sta     BUFTXT+1                        ; EFAC 8D 01 80
-        sty     BUFTXT+3                        ; EFAF 8C 03 80
+        sta     CODFX                           ; EFAC 8D 01 80
+        sty     CODFY                           ; EFAF 8C 03 80
         beq     LEF96                           ; EFB2 F0 E2
 
 LEFB4:
@@ -2958,7 +3050,7 @@ LEFB4:
 
 ; ----------------------------------------------------------------------------
 LEFC3:
-        cpx     #KEY_FUNCT_X              ; EFC3 E0 98
+        cpx     #KEY_FUNCT_X                    ; EFC3 E0 98
         bne     LEFD2                           ; EFC5 D0 0B
 
         ldx     VDTX                            ; EFC7 A6 38
@@ -2981,25 +3073,31 @@ LEFD8:
         dex                                     ; EFE1 CA
         bpl     LEFD8                           ; EFE2 10 F4
 
+	; Initialisation de FLGCOD: Affichage du curseur
         lda     #$40                            ; EFE4 A9 40
-        sta     BUFTXT+6                        ; EFE6 8D 06 80
+        sta     FLGCOD                          ; EFE6 8D 06 80
+
         lda     VDTX                            ; EFE9 A5 38
         ldy     VDTY                            ; EFEB A4 39
-        sta     BUFTXT+4                        ; EFED 8D 04 80
-        sty     BUFTXT+5                        ; EFF0 8C 05 80
+        sta     CODCX                           ; EFED 8D 04 80
+        sty     CODCY                           ; EFF0 8C 05 80
         jsr     _XVDTEX                         ; EFF3 20 EC F2
         ldy     VARAPL+2                        ; EFF6 A4 D2
 LEFF8:
         ldx     VARAPL                          ; EFF8 A6 D0
         inx                                     ; EFFA E8
-        jsr     LF1DC                           ; EFFB 20 DC F1
+        jsr     US_XY                           ; EFFB 20 DC F1
         dex                                     ; EFFE CA
+
         lda     #$00                            ; EFFF A9 00
         sta     VDTASC                          ; F001 85 33
+
+	; Attributs: G1, Texte blanc
         lda     #$87                            ; F003 A9 87
         sta     VDTATR                          ; F005 85 34
+
 LF007:
-        lda     #$20                            ; F007 A9 20
+        lda     #' '                            ; F007 A9 20
         _XWR2                                   ; F009 00 12
 
         inx                                     ; F00B E8
@@ -3063,26 +3161,34 @@ LF044:
         txa                                     ; F044 8A
         bne     LF052                           ; F045 D0 0B
 
+	; Bascule mode trace / efface
         lda     FLGVD1                          ; F047 A5 3D
         eor     #$02                            ; F049 49 02
         sta     FLGVD1                          ; F04B 85 3D
+
         jmp     LEF38                           ; F04D 4C 38 EF
 
 ; ----------------------------------------------------------------------------
         lda     #$09                            ; F050 A9 09
 LF052:
+	; Ctrl+G?
         cmp     #$07                            ; F052 C9 07
         bne     LF076                           ; F054 D0 20
 
+	; Bascule mode graphique
         lda     FLGVD1                          ; F056 A5 3D
         eor     #$40                            ; F058 49 40
         sta     FLGVD1                          ; F05A 85 3D
 
+	; Si mode graphique, bouton droit=$03
+	; et envoie le code DC1 (cuseur ON) vers Videotex
         ldx     #$03                            ; F05C A2 03
         lda     #$11                            ; F05E A9 11
         bit     FLGVD1                          ; F060 24 3D
         bvc     LF068                           ; F062 50 04
 
+	; Sinon, bouton droit=$00
+	; et envoie le code DC4 (curseur OFF) vers Videotex
         lda     #$14                            ; F064 A9 14
         ldx     #$00                            ; F066 A2 00
 
@@ -3090,6 +3196,7 @@ LF068:
         stx     JCKTAB+6                        ; F068 8E A3 02
         _XWR2                                   ; F06B 00 12
 
+	; Coordonnées graphiques Videotex = 0,0
         lda     #$00                            ; F06D A9 00
         sta     VDTGX                           ; F06F 85 3A
         sta     VDTGY                           ; F071 85 3B
@@ -3097,18 +3204,24 @@ LF068:
 
 ; ----------------------------------------------------------------------------
 LF076:
+	; < Ctrl+H -> LF0C4
         cmp     #$08                            ; F076 C9 08
         bcc     LF0C4                           ; F078 90 4A
 
+	; >= Ctrl+L?
         cmp     #$0C                            ; F07A C9 0C
         bcs     LF0C4                           ; F07C B0 46
 
+	; Ici touche de déplacement du curseur
+	; Mode graphique?, non -> LF0C1
         bit     FLGVD1                          ; F07E 24 3D
         bvc     LF0C1                           ; F080 50 3F
 
+	; [<-]?
         cmp     #$08                            ; F082 C9 08
         bne     LF090                           ; F084 D0 0A
 
+	; Déplacement à gauche
         dec     VDTGX                           ; F086 C6 3A
         bpl     LF0BE                           ; F088 10 34
 
@@ -3117,6 +3230,7 @@ LF076:
         bne     LF0C1                           ; F08E D0 31
 
 LF090:
+	; [->]?
         cmp     #$09                            ; F090 C9 09
         bne     LF0A2                           ; F092 D0 0E
 
@@ -3130,6 +3244,7 @@ LF090:
         beq     LF0C1                           ; F0A0 F0 1F
 
 LF0A2:
+	; [down]?
         cmp     #$0A                            ; F0A2 C9 0A
         bne     LF0B4                           ; F0A4 D0 0E
 
@@ -3143,6 +3258,7 @@ LF0A2:
         beq     LF0C1                           ; F0B2 F0 0D
 
 LF0B4:
+	; [up]
         dec     VDTGY                           ; F0B4 C6 3B
         bpl     LF0BE                           ; F0B6 10 06
 
@@ -3159,6 +3275,7 @@ LF0C1:
 
 ; ----------------------------------------------------------------------------
 LF0C4:
+	; [Return]?
         cmp     #$0D                            ; F0C4 C9 0D
         bne     LF0CE                           ; F0C6 D0 06
 
@@ -3168,6 +3285,7 @@ LF0C4:
         bne     LF0C1                           ; F0CC D0 F3
 
 LF0CE:
+	; [Delete]?
         cmp     #$7F                            ; F0CE C9 7F
         bne     LF0EF                           ; F0D0 D0 1D
 
@@ -3196,6 +3314,7 @@ LF0EA:
 
 ; ----------------------------------------------------------------------------
 LF0EF:
+	; [space]?
         cmp     #$20                            ; F0EF C9 20
         bne     LF139                           ; F0F1 D0 46
 
@@ -3207,8 +3326,7 @@ LF0EF:
 
         lda     #$0E                            ; F0FB A9 0E
         _XWR2                                   ; F0FD 00 12
-L
-F0FF:
+LF0FF:
         lda     VDTGY                           ; F0FF A5 3B
         asl     a                               ; F101 0A
         adc     VDTGX                           ; F102 65 3A
@@ -3249,6 +3367,7 @@ LF133:
         .byte   $01,$02,$04,$08,$10,$20         ; F133 01 02 04 08 10 20
 ; ----------------------------------------------------------------------------
 LF139:
+	; Ctrl+A?
         cmp     #$01                            ; F139 C9 01
         bne     LF15E                           ; F13B D0 21
 
@@ -3277,6 +3396,7 @@ LF15B:
 
 ; ----------------------------------------------------------------------------
 LF15E:
+	; Ctrl+B?
         cmp     #$02                            ; F15E C9 02
         bne     LF184                           ; F160 D0 22
 
@@ -3311,6 +3431,7 @@ LF17B:
         bcc     LF176                           ; F182 90 F2
 
 LF184:
+	; Ctrl+R?
         cmp     #$12                            ; F184 C9 12
         bne     LF191                           ; F186 D0 09
 
@@ -3320,6 +3441,7 @@ LF184:
 
 ; ----------------------------------------------------------------------------
 LF191:
+	; Ctrl+S?
         cmp     #$13                            ; F191 C9 13
         bne     LF19E                           ; F193 D0 09
 
@@ -3329,6 +3451,7 @@ LF191:
 
 ; ----------------------------------------------------------------------------
 LF19E:
+	; Ctrl+E?
         cmp     #$05                            ; F19E C9 05
         bne     LF1AB                           ; F1A0 D0 09
 
@@ -3338,12 +3461,16 @@ LF19E:
 
 ; ----------------------------------------------------------------------------
 LF1AB:
+	; Ctrl+T?
         cmp     #$14                            ; F1AB C9 14
         beq     LF1B5                           ; F1AD F0 06
 
+	; Ctrl+C?
         cmp     #$03                            ; F1AF C9 03
         beq     LF1B5                           ; F1B1 F0 02
 
+	; Aucune touche de contrôle, on affiche
+	; le caractère vers Videotex
         _XWR2                                   ; F1B3 00 12
 
 LF1B5:
@@ -3367,7 +3494,7 @@ LF1B8:
         pla                                     ; F1CC 68
         tax                                     ; F1CD AA
         inx                                     ; F1CE E8
-        jsr     LF1DC                           ; F1CF 20 DC F1
+        jsr     US_XY                           ; F1CF 20 DC F1
         pla                                     ; F1D2 68
         sta     VDTPAR                          ; F1D3 85 32
         pla                                     ; F1D5 68
@@ -3377,14 +3504,18 @@ LF1B8:
         rts                                     ; F1DB 60
 
 ; ----------------------------------------------------------------------------
-LF1DC:
+; Positionne le curseur en X,Y sur Videotex
+US_XY:
+	; US
         lda     #$1F                            ; F1DC A9 1F
         _XWR2                                   ; F1DE 00 12
 
+	; Y+64
         tya                                     ; F1E0 98
         ora     #$40                            ; F1E1 09 40
         _XWR2                                   ; F1E3 00 12
 
+	; X+64
         txa                                     ; F1E5 8A
         ora     #$40                            ; F1E6 09 40
         _XWR2                                   ; F1E8 00 12
@@ -3393,8 +3524,8 @@ LF1DC:
 
 ; ----------------------------------------------------------------------------
 LF1EB:
-        lda     #$07                            ; F1EB A9 07
-        ldy     #$80                            ; F1ED A0 80
+        lda     #<(BUFTXT+7)                    ; F1EB A9 07
+        ldy     #>(BUFTXT+7)                    ; F1ED A0 80
         sta     RES                             ; F1EF 85 00
         sty     RES+1                           ; F1F1 84 01
         sec                                     ; F1F3 38
@@ -3459,8 +3590,10 @@ LF242:
 
 ; ----------------------------------------------------------------------------
 LF245:
+	; Ajoute Esc a dans le buffer
         tax                                     ; F245 AA
 LF246:
+	; Ajoute ESC x dans le buffer
         lda     #$1B                            ; F246 A9 1B
         jsr     LF24F                           ; F248 20 4F F2
 LF24B:
@@ -3469,6 +3602,7 @@ LF24B:
         .byte   $2C                             ; F24C 2C
 
 LF24D:
+	; Ajoute FF dans le buffer
         lda     #$0C                            ; F24D A9 0C
 LF24F:
         sty     RES                             ; F24F 84 00
@@ -3483,45 +3617,50 @@ LF25B:
         rts                                     ; F25D 60
 
 ; ----------------------------------------------------------------------------
+; Efface le buffer (le rempli de ' ')
 LF25E:
-        lda     #$07                            ; F25E A9 07
-        ldy     #$80                            ; F260 A0 80
+        lda     #<(BUFTXT+7)                    ; F25E A9 07
+        ldy     #>(BUFTXT+7)                    ; F260 A0 80
         sta     $EA                             ; F262 85 EA
         sty     $EB                             ; F264 84 EB
-        bit     BUFTXT+6                        ; F266 2C 06 80
+
+	; Effacement de la page?
+        bit     FLGCOD                          ; F266 2C 06 80
         bpl     LF2A5                           ; F269 10 3A
 
-        lda     BUFTXT                          ; F26B AD 00 80
+	; Oui
+
+        lda     CODDX                           ; F26B AD 00 80
         bne     LF285                           ; F26E D0 15
 
-        lda     BUFTXT+2                        ; F270 AD 02 80
+        lda     CODDY                           ; F270 AD 02 80
         cmp     #$01                            ; F273 C9 01
         bne     LF285                           ; F275 D0 0E
 
-        lda     BUFTXT+1                        ; F277 AD 01 80
+        lda     CODFX                           ; F277 AD 01 80
         cmp     #$27                            ; F27A C9 27
         bne     LF285                           ; F27C D0 07
 
-        lda     BUFTXT+3                        ; F27E AD 03 80
+        lda     CODFY                           ; F27E AD 03 80
         cmp     #$18                            ; F281 C9 18
         beq     LF24D                           ; F283 F0 C8
 
 LF285:
-        ldy     BUFTXT+2                        ; F285 AC 02 80
+        ldy     CODDY                           ; F285 AC 02 80
 LF288:
         jsr     LF2A9                           ; F288 20 A9 F2
-        lda     #$20                            ; F28B A9 20
+        lda     #' '                            ; F28B A9 20
         jsr     LF24F                           ; F28D 20 4F F2
         sec                                     ; F290 38
-        lda     BUFTXT+1                        ; F291 AD 01 80
-        sbc     BUFTXT                          ; F294 ED 00 80
+        lda     CODFX                           ; F291 AD 01 80
+        sbc     CODDX                           ; F294 ED 00 80
         tax                                     ; F297 AA
         beq     LF29D                           ; F298 F0 03
 
         jsr     LF2B9                           ; F29A 20 B9 F2
 LF29D:
         iny                                     ; F29D C8
-        cpy     BUFTXT+3                        ; F29E CC 03 80
+        cpy     CODFY                           ; F29E CC 03 80
         beq     LF288                           ; F2A1 F0 E5
 
         bcc     LF288                           ; F2A3 90 E3
@@ -3530,18 +3669,23 @@ LF2A5:
         rts                                     ; F2A5 60
 
 ; ----------------------------------------------------------------------------
-        ldy     BUFTXT+2                        ; F2A6 AC 02 80
+        ldy     CODDY                           ; F2A6 AC 02 80
 LF2A9:
-        ldx     BUFTXT                          ; F2A9 AE 00 80
+        ldx     CODDX                           ; F2A9 AE 00 80
 LF2AC:
         inx                                     ; F2AC E8
         jsr     LF2C4                           ; F2AD 20 C4 F2
+
+	; Ajoute US y x dans le buffer
+	; (positionnement du curseur)
         lda     #$1F                            ; F2B0 A9 1F
         jsr     LF24F                           ; F2B2 20 4F F2
         tya                                     ; F2B5 98
         ora     #$40                            ; F2B6 09 40
         .byte   $2C                             ; F2B8 2C
 LF2B9:
+	; Ajoute REP x dans le buffer
+	; (effacement de la page)
         lda     #$12                            ; F2B9 A9 12
         jsr     LF24F                           ; F2BB 20 4F F2
         txa                                     ; F2BE 8A
@@ -3558,19 +3702,22 @@ LF2C4:
         rts                                     ; F2CE 60
 
 ; ----------------------------------------------------------------------------
+; Défini la fenêtre: (0,1) - (39,24)
+; et flags: Effacement de la page + Affichage du curseur
 LF2CF:
         lda     #$00                            ; F2CF A9 00
         ldy     #$01                            ; F2D1 A0 01
-        sta     BUFTXT                          ; F2D3 8D 00 80
-        sty     BUFTXT+2                        ; F2D6 8C 02 80
+        sta     CODDX                           ; F2D3 8D 00 80
+        sty     CODDY                           ; F2D6 8C 02 80
 
         lda     #$27                            ; F2D9 A9 27
         ldy     #$18                            ; F2DB A0 18
-        sta     BUFTXT+1                        ; F2DD 8D 01 80
-        sty     BUFTXT+3                        ; F2E0 8C 03 80
+        sta     CODFX                           ; F2DD 8D 01 80
+        sty     CODFY                           ; F2E0 8C 03 80
 
+	; Effacement de la page + Affichage du curseur
         lda     #$C0                            ; F2E3 A9 C0
-        sta     BUFTXT+6                        ; F2E5 8D 06 80
+        sta     FLGCOD                          ; F2E5 8D 06 80
         rts                                     ; F2E8 60
 
 ; ----------------------------------------------------------------------------
@@ -3578,7 +3725,7 @@ LF2E9:
         jsr     LF2CF                           ; F2E9 20 CF F2
 
 ; Lancer le codage de la page courante avec les paramètres courants
-VDTEX:
+_XVDTEX:
         ; Sauvegarde FLGVD1
         lda     FLGVD1                          ; F2EC A5 3D
         pha                                     ; F2EE 48
@@ -3587,8 +3734,11 @@ VDTEX:
         and     #$7F                            ; F2EF 29 7F
         sta     FLGVD1                          ; F2F1 85 3D
 
+	; Efface le buffer
         jsr     LF25E                           ; F2F3 20 5E F2
 
+	; Met b7 à 1 des 40 octets de la
+	; table TABDBH
         ldx     #$27                            ; F2F6 A2 27
 LF2F8:
         sec                                     ; F2F8 38
@@ -3596,13 +3746,13 @@ LF2F8:
         dex                                     ; F2FC CA
         bpl     LF2F8                           ; F2FD 10 F9
 
-        lda     BUFTXT+2                        ; F2FF AD 02 80
+        lda     CODDY                           ; F2FF AD 02 80
         sta     VDTY                            ; F302 85 39
 
 LF304:
         _XVDTCS                                 ; F304 00 30
 
-        ldy     BUFTXT                          ; F306 AC 00 80
+        ldy     CODDX                           ; F306 AC 00 80
 
 LF309:
         jsr     LF4C6                           ; F309 20 C6 F4
@@ -3616,30 +3766,34 @@ LF30E:
 LF316:
         inc     VDTY                            ; F316 E6 39
         lda     VDTY                            ; F318 A5 39
-        cmp     BUFTXT+3                        ; F31A CD 03 80
+        cmp     CODFY                           ; F31A CD 03 80
         bcc     LF304                           ; F31D 90 E5
 
         beq     LF304                           ; F31F F0 E3
 
+	; DC4: curseur off
         lda     #$14                            ; F321 A9 14
 
-        bit     BUFTXT+6                        ; F323 2C 06 80
+	; Affichage du curseur?
+        bit     FLGCOD                          ; F323 2C 06 80
         bvc     LF32A                           ; F326 50 02
-
+	; DC1: curseur on
         lda     #$11                            ; F328 A9 11
+
 LF32A:
         jsr     LF24F                           ; F32A 20 4F F2
 
-        ldx     BUFTXT+4                        ; F32D AE 04 80
-        ldy     BUFTXT+5                        ; F330 AC 05 80
+        ldx     CODCX                           ; F32D AE 04 80
+        ldy     CODCY                           ; F330 AC 05 80
         jsr     LF2AC                           ; F333 20 AC F2
 
+	; Ajoute le marqueur de fin dans le buffer
         lda     #$00                            ; F336 A9 00
         jsr     LF24F                           ; F338 20 4F F2
 
         ; DESALO := BUFTXT
-        lda     #$00                            ; F33B A9 00
-        ldy     #$80                            ; F33D A0 80
+        lda     #<BUFTXT                        ; F33B A9 00
+        ldy     #>BUFTXT                        ; F33D A0 80
         sta     DESALO                          ; F33F 8D 2D 05
         sty     DESALO+1                        ; F342 8C 2E 05
 
@@ -3968,7 +4122,7 @@ LF4E4:
         sta     TABDBH,y                        ; F4F0 99 80 9C
         iny                                     ; F4F3 C8
 LF4F4:
-        cpy     BUFTXT+1                        ; F4F4 CC 01 80
+        cpy     CODFX                           ; F4F4 CC 01 80
         beq     LF4FA                           ; F4F7 F0 01
 
         rts                                     ; F4F9 60
@@ -4028,8 +4182,8 @@ LF56D:
 LF577:
         lda     VDTX                            ; F577 A5 38
         ldy     VDTY                            ; F579 A4 39
-        sta     BUFTXT+4                        ; F57B 8D 04 80
-        sty     BUFTXT+5                        ; F57E 8C 05 80
+        sta     CODCX                           ; F57B 8D 04 80
+        sty     CODCY                           ; F57E 8C 05 80
 
         lda     #$00                            ; F581 A9 00
 
@@ -4041,7 +4195,7 @@ LF577:
         lda     #$40                            ; F587 A9 40
 
 LF589:
-        sta     BUFTXT+6                        ; F589 8D 06 80
+        sta     FLGCOD                          ; F589 8D 06 80
         jsr     LF2E9                           ; F58C 20 E9 F2
 
         lda     #XMDE                           ; F58F A9 82
@@ -4083,6 +4237,7 @@ LF5BB:
         asl     KBDCTC                          ; F5BB 0E 7E 02
         bcs     LF577                           ; F5BE B0 B7
 
+	; Funct+D?
         cmp     #$84                            ; F5C0 C9 84
         bne     LF5C9                           ; F5C2 D0 05
 
@@ -4091,6 +4246,7 @@ LF5BB:
 
 ; ----------------------------------------------------------------------------
 LF5C9:
+	; Funct+F?
         cmp     #$86                            ; F5C9 C9 86
         bne     LF5D2                           ; F5CB D0 05
 
@@ -4122,6 +4278,7 @@ LF5D2:
 ; ----------------------------------------------------------------------------
 LF5E4:
         txa                                     ; F5E4 8A
+	; Ctrl+O?
         cmp     #$0F                            ; F5E5 C9 0F
         bne     LF5F1                           ; F5E7 D0 08
 
@@ -4140,7 +4297,7 @@ LF5F1:
         cmp     #$7F                            ; F5F7 C9 7F
         beq     LF636                           ; F5F9 F0 3B
 
-        cmp     #$20                            ; F5FB C9 20
+        cmp     #' '                            ; F5FB C9 20
         bcc     LF605                           ; F5FD 90 06
 
 LF5FF:
@@ -4149,40 +4306,49 @@ LF5FF:
 
 ; ----------------------------------------------------------------------------
 LF605:
+	; [Return]?
         ldx     #$41                            ; F605 A2 41
         cmp     #$0D                            ; F607 C9 0D
         beq     LF636                           ; F609 F0 2B
 
+	; [up]?
         inx                                     ; F60B E8
         cmp     #$0B                            ; F60C C9 0B
         beq     LF636                           ; F60E F0 26
 
+	; Ctrl+R?
         inx                                     ; F610 E8
         cmp     #$12                            ; F611 C9 12
         beq     LF636                           ; F613 F0 21
 
+	; Ctrl+G?
         inx                                     ; F615 E8
         cmp     #$07                            ; F616 C9 07
         beq     LF636                           ; F618 F0 1C
 
+	; Ctrl+A?
         inx                                     ; F61A E8
         cmp     #$01                            ; F61B C9 01
         beq     LF636                           ; F61D F0 17
 
+	; [Esc]?
         inx                                     ; F61F E8
         cmp     #$1B                            ; F620 C9 1B
         beq     LF636                           ; F622 F0 12
 
+	; [down]?
         ldx     #$48                            ; F624 A2 48
         cmp     #$0A                            ; F626 C9 0A
         beq     LF636                           ; F628 F0 0C
 
+	; Ctrl+D?
         inx                                     ; F62A E8
         cmp     #$04                            ; F62B C9 04
         bne     LF640                           ; F62D D0 11
 
+	; Envoie PRO1...
         jsr     LE86E                           ; F62F 20 6E E8
-
+	; ...Connexion au minital
         lda     #$68                            ; F632 A9 68
         _XWR1                                   ; F634 00 11
 
@@ -4198,6 +4364,7 @@ LF63D:
 
 ; ----------------------------------------------------------------------------
 LF640:
+	; Ctrl+E?
         cmp     #$05                            ; F640 C9 05
         bne     LF64D                           ; F642 D0 09
 
@@ -4207,9 +4374,11 @@ LF640:
 
 ; ----------------------------------------------------------------------------
 LF64D:
+	; Ctrl+X?
         cmp     #$18                            ; F64D C9 18
         bne     LF65E                           ; F64F D0 0D
 
+	; Réinitialise l'horloge
         lda     #$00                            ; F651 A9 00
         sta     TIMEH                           ; F653 8D 13 02
         sta     TIMEM                           ; F656 8D 12 02
@@ -4217,6 +4386,7 @@ LF64D:
         bcs     LF63D                           ; F65C B0 DF
 
 LF65E:
+	; Ctrl+Z?
         nop                                     ; F65E EA
         cmp     #$1A                            ; F65F C9 1A
         bne     LF665                           ; F661 D0 02
@@ -4466,16 +4636,17 @@ LF79D:
         ldx     VARAPL+2                        ; F79D A6 D2
         lda     VARAPL+3                        ; F79F A5 D3
         jsr     LE8AB                           ; F7A1 20 AB E8
-        bit     $9CCC                           ; F7A4 2C CC 9C
+        bit     PAGE+12                         ; F7A4 2C CC 9C
         bvc     LF7ED                           ; F7A7 50 44
 
-        lda     $9CCC                           ; F7A9 AD CC 9C
+        lda     PAGE+12                         ; F7A9 AD CC 9C
         and     #$20                            ; F7AC 29 20
         bne     LF7EC                           ; F7AE D0 3C
 
-        ldx     $9CCA                           ; F7B0 AE CA 9C
-        lda     $9CCB                           ; F7B3 AD CB 9C
+        ldx     PAGE+10                         ; F7B0 AE CA 9C
+        lda     PAGE+11                         ; F7B3 AD CB 9C
         jsr     LE8AB                           ; F7B6 20 AB E8
+
         ldy     #$0C                            ; F7B9 A0 0C
         lda     (RESB),y                        ; F7BB B1 02
         ora     #$40                            ; F7BD 09 40
@@ -4489,8 +4660,8 @@ LF7C1:
         lda     VARAPL+1                        ; F7CA A5 D1
         adc     #$00                            ; F7CC 69 00
         sta     DECDEB+1                        ; F7CE 85 05
-        lda     #$00                            ; F7D0 A9 00
-        ldy     #$80                            ; F7D2 A0 80
+        lda     #<BUFTXT                        ; F7D0 A9 00
+        ldy     #>BUFTXT                        ; F7D2 A0 80
         sta     DECFIN                          ; F7D4 85 06
         sty     DECFIN+1                        ; F7D6 84 07
         ldx     VARAPL                          ; F7D8 A6 D0
@@ -4511,8 +4682,8 @@ LF7EC:
 
 ; ----------------------------------------------------------------------------
 LF7ED:
-        ldx     $9CCA                           ; F7ED AE CA 9C
-        lda     $9CCB                           ; F7F0 AD CB 9C
+        ldx     PAGE+10                         ; F7ED AE CA 9C
+        lda     PAGE+11                         ; F7F0 AD CB 9C
         stx     VARAPL+4                        ; F7F3 86 D4
         sta     VARAPL+5                        ; F7F5 85 D5
         jsr     LE8AB                           ; F7F7 20 AB E8
@@ -4558,10 +4729,10 @@ LF828:
         lsr     a                               ; F831 4A
         bcc     LF83F                           ; F832 90 0B
 
-        bit     $9CCC                           ; F834 2C CC 9C
+        bit     PAGE+12                         ; F834 2C CC 9C
         bvc     LF826                           ; F837 50 ED
 
-        lda     $9CCC                           ; F839 AD CC 9C
+        lda     PAGE+12                         ; F839 AD CC 9C
         lsr     a                               ; F83C 4A
         bcs     LF826                           ; F83D B0 E7
 
@@ -4632,7 +4803,7 @@ LF89F:
 ; ----------------------------------------------------------------------------
 LF8A1:
         lda     #$04                            ; F8A1 A9 04
-        cmp     $9CCD                           ; F8A3 CD CD 9C
+        cmp     PAGE+13                         ; F8A3 CD CD 9C
         bcs     LF8B3                           ; F8A6 B0 0B
 
         bcc     LF89F                           ; F8A8 90 F5
@@ -4764,7 +4935,7 @@ LF933:
         ; Restaure P
         plp                                     ; F937 28
 
-        ; Si C=0, on veut ajouté une nouvelle page vide
+        ; Si C=0, on veut ajouter une nouvelle page vide
         bcc     LF944                           ; F938 90 0A
 
         ; Restaure A
@@ -4897,8 +5068,8 @@ LF9A2:
 ; Nouveau serveur
 LF9A3:
         ; "validation (O/N):"
-        lda     #$56                            ; F9A3 A9 56
-        ldy     #$ED                            ; F9A5 A0 ED
+        lda     #<LED56                         ; F9A3 A9 56
+        ldy     #>LED56                         ; F9A5 A0 ED
         _XWSTR0                                 ; F9A7 00 14
 
         ; Attend une touche
@@ -5084,7 +5255,7 @@ LFA61:
 
         lda     SCRX                            ; FA65 AD 20 02
 LFA68:
-        cmp     #'!'                            ; FA68 C9 21
+        cmp     #$21                            ; FA68 C9 21
         bne     LFA6E                           ; FA6A D0 02
 
         lda     #$F9                            ; FA6C A9 F9
@@ -5390,12 +5561,12 @@ LFBC6:
 
         jsr     LFCD3                           ; FBCA 20 D3 FC
         jsr     LE8AB                           ; FBCD 20 AB E8
-        lda     $9CCC                           ; FBD0 AD CC 9C
+        lda     PAGE+12                         ; FBD0 AD CC 9C
         and     #$89                            ; FBD3 29 89
         bne     LFC47                           ; FBD5 D0 70
 
         ldy     #$0C                            ; FBD7 A0 0C
-        lda     $9CCC                           ; FBD9 AD CC 9C
+        lda     PAGE+12                         ; FBD9 AD CC 9C
         eor     #$10                            ; FBDC 49 10
         sta     (RESB),y                        ; FBDE 91 02
         and     #$10                            ; FBE0 29 10
@@ -5627,6 +5798,8 @@ LFCD0:
         jmp     LFA44                           ; FCD0 4C 44 FA
 
 ; ----------------------------------------------------------------------------
+; Copie les 6 caractères du mot clé à l'écran vers BUFEDT
+; puis recherche ce mot dans la table des mots clé
 LFCD3:
         ldx     #$00                            ; FCD3 A2 00
         ldy     SCRX                            ; FCD5 AC 20 02
