@@ -1,0 +1,190 @@
+;----------------------------------------------------------------------
+;
+;----------------------------------------------------------------------
+.macro _XWSTR0
+	.byte	$00, XWSTR0
+.endmacro
+
+.macro _XWSTR1
+	.byte	$00, XWSTR1
+.endmacro
+
+.macro _XWSTR2
+	.byte	$00, XWSTR2
+.endmacro
+
+
+
+.macro _XRDW0
+	.byte	$00, XRDW0
+.endmacro
+
+
+.macro _XWR0
+	.byte	$00, XWR0
+.endmacro
+
+.macro _XWR1
+	.byte	$00, XWR1
+.endmacro
+
+.macro _XWR2
+	.byte	$00, XWR2
+.endmacro
+
+
+
+.macro _XCL0
+	.byte	$00, XCL0
+.endmacro
+
+.macro _XCL1
+	.byte	$00, XCL1
+.endmacro
+
+.macro _XCL2
+	.byte	$00, XCL2
+.endmacro
+
+
+.macro _XOP0
+	.byte	$00, XOP0
+.endmacro
+
+.macro _XOP1
+	.byte	$00, XOP1
+.endmacro
+
+.macro _XOP2
+	.byte	$00, XOP2
+.endmacro
+
+
+.macro _XRD0
+	.byte	$00, XRD0
+.endmacro
+
+.macro _XRD1
+	.local XRD1
+	XRD1 = $09
+	.byte	$00, XRD1
+.endmacro
+
+XDECON = $65
+.macro _XDECON
+	.byte	$00, XDECON
+.endmacro
+
+XLIGNE = $64
+.macro _XLIGNE
+	.byte	$00, XLIGNE
+.endmacro
+
+.macro _XVDTAF
+	.local XVDTAF
+	XVDTAF = $31
+	.byte	$00, XVDTAF
+.endmacro
+
+.macro _XCOSCR
+	.byte	$00, XCOSCR
+.endmacro
+
+.macro _XCSSCR
+	.byte	$00, XCSSCR
+.endmacro
+
+.macro _XDECAL
+	.byte	$00, XDECAL
+.endmacro
+
+.macro _XBINDX
+	.byte	$00, XBINDX
+.endmacro
+
+.macro _XLPCRL
+	; /!\ XPUTCWD = $49
+	.local XLPCRL
+	XLPCRL = $49
+	.byte	$00, XLPCRL
+.endmacro
+
+.macro _XSCRNE
+	.byte	$00, XSCRNE
+.endmacro
+
+.macro _XDECIM
+	.byte	$00, XDECIM
+.endmacro
+
+.macro _XMENU
+	.local XMENU
+	XMENU = $2c
+	.byte	$00, XMENU
+.endmacro
+
+.macro _XRING
+	; /!\ XFREE = $62
+	.local XRING
+	XRING = $62
+	.byte	$00, XRING
+.endmacro
+
+.macro _XTSTBU
+	.byte	$00, XTSTBU
+.endmacro
+
+.macro _XSCXFI
+	; /!\ XEXEC = $63
+	.local XSCXFI
+	XSCXFI = $63
+	.byte	$00, XSCXFI
+.endmacro
+
+.macro _XCRLF
+	.byte	$00, XCRLF
+.endmacro
+
+.macro _XADRES
+	.local XADRES
+	XADRES = $22
+	.byte	$00, XADRES
+.endmacro
+
+.macro _XVDTCS
+	; /!\ XOPEN = $30
+	.local XVDTCS
+	XVDTCS = $30
+	.byte	$00, XVDTCS
+.endmacro
+
+.macro _XVDTCV
+	; /!\ XFWRTIE = $3b
+	.local XVDTCV
+	XVDTCV = $3b
+	.byte	$00, XVDTCV
+.endmacro
+
+.macro _XCLCL
+	.byte	$00, XCLCL
+.endmacro
+
+.macro _XWRCLK
+	.byte	$00, XWRCLK
+.endmacro
+
+XHCVDT = $4b
+.macro _XHCVDT
+	.byte	$00, XHCVDT
+.endmacro
+
+XHCHRS = $4c
+.macro _XHCHRS
+	.byte	$00, XHCHRS
+.endmacro
+
+.macro _XLPRBI
+	.byte	$00, XLPRBI
+.endmacro
+
+
